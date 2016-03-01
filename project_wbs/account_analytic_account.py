@@ -84,7 +84,7 @@ class AccountAnalyticAccount(models.Model):
         return dict(res)
 
     @api.multi
-    def _child_count(self, account_class, arg):
+    def _child_count(self, account_class):
         res = dict.fromkeys(self._ids, 0)
         ctx = self._context.copy()
         ctx['active_test'] = False
@@ -102,32 +102,29 @@ class AccountAnalyticAccount(models.Model):
     @api.depends('child_project_count')
     def _child_project_count(self):
         for account in self:
-            account.child_project_count = account._child_count('project',
-                                                               self._arg)
+            account.child_project_count = account._child_count('project')
 
     @api.depends('child_phase_count')
     def _child_phase_count(self):
         for account in self:
-            account.child_phase_count = account._child_count('phase',
-                                                             self._arg)
+            account.child_phase_count = account._child_count('phase')
 
     @api.depends('child_deliverable_count')
     def _child_deliverable_count(self):
         for account in self:
             account.child_deliverable_count = account.\
-                _child_count('deliverable', self._arg)
+                _child_count('deliverable')
 
     @api.depends('child_work_package_count')
     def _child_work_package_count(self):
         for account in self:
             account.child_work_package_count = account.\
-                _child_count('work_package', self._arg)
+                _child_count('work_package')
 
     @api.depends('child_unclassified_count')
     def _child_unclassified_count(self):
         for account in self:
-            account.child_unclassified_count = account._child_count('',
-                                                                    self._arg)
+            account.child_unclassified_count = account._child_count('')
 
     @api.model
     def _resolve_analytic_account_id_from_context(self):
@@ -219,17 +216,17 @@ class AccountAnalyticAccount(models.Model):
         'analytic_account_id', 'stage_id', 'Child Stages', states={
             'close': [('readonly', True)], 'cancelled': [('readonly',
                                                           True)]})
-    child_project_count = fields.Integer(compute='_child_project_count',
-                                         "Projects", store=True)
-    child_phase_count = fields.Integer(compute='_child_phase_count',
-                                       "Phases", store=True)
+    child_project_count = fields.Integer("Projects", compute='_child_project_count',
+                                         store=True)
+    child_phase_count = fields.Integer("Phases", compute='_child_phase_count',
+                                       store=True)
     child_deliverable_count = fields.\
-        Integer(compute='_child_deliverable_count', "Deliverables", store=True)
+        Integer("Deliverables", compute='_child_deliverable_count', store=True)
     child_work_package_count = fields.\
-        Integer(compute='_child_work_package_count', "Work Packages",
+        Integer("Work Packages", compute='_child_work_package_count',
                 store=True)
     child_unclassified_count = fields.\
-        Integer(compute='_child_unclassified_count', "Unclassified projects",
+        Integer("Unclassified projects", compute='_child_unclassified_count',
                 store=True)
 
     @api.model

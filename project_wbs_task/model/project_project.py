@@ -19,6 +19,24 @@
 #
 ##############################################################################
 
-import analytic_account_stage
-import account_analytic_account
-import project_project
+from openerp import api, fields, models
+
+
+class project(models.Model):
+    _inherit = "project.project"
+
+    @api.multi
+    def action_openTasksTreeView(self):
+        """
+        :return dict: dictionary value for created view
+        """
+        project = self[0]
+        task = self.env['project.task'].search([('project_id', '=', project.id)])
+        res = self.env['ir.actions.act_window'].for_xml_id('project_wbs_task', 'action_task_tree_view')
+        res['context'] = {
+            'default_project_id': project.id,
+        }
+        res['domain'] = "[('id', 'in', ["+','.join(
+            map(str, task.ids))+"])]"
+        res['nodestroy'] = False
+        return res
