@@ -55,11 +55,13 @@ class task(models.Model):
                 res.append((task.id, ''))
         return dict(res)
 
-    analytic_account_id = fields.Many2one(related='project_id.analytic_account_id',
-                                          relation='account.analytic.account',
-                                          string='Analytic Account',
-                                          store=True, readonly=True)
-    project_complete_wbs_code = fields.Char('Full WBS Code', related='analytic_account_id.complete_wbs_code',
-                                            readonly=True)
-    project_complete_wbs_name = fields.Char('Full WBS Name', related='analytic_account_id.complete_wbs_name',
-                                            readonly=True)
+    analytic_account_id = fields.\
+        Many2one(related='project_id.analytic_account_id',
+                 relation='account.analytic.account',
+                 string='Analytic Account', store=True, readonly=True)
+    project_complete_wbs_code = fields.\
+        Char('Full WBS Code', related='analytic_account_id.complete_wbs_code',
+             readonly=True)
+    project_complete_wbs_name = fields.\
+        Char('Full WBS Name', related='analytic_account_id.complete_wbs_name',
+             readonly=True)

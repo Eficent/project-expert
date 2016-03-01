@@ -19,7 +19,6 @@
 #
 ##############################################################################
 
-#import tools
 from openerp import api, fields, models
 from openerp.tools.translate import _
 

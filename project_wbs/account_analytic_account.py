@@ -216,7 +216,8 @@ class AccountAnalyticAccount(models.Model):
         'analytic_account_id', 'stage_id', 'Child Stages', states={
             'close': [('readonly', True)], 'cancelled': [('readonly',
                                                           True)]})
-    child_project_count = fields.Integer("Projects", compute='_child_project_count',
+    child_project_count = fields.Integer("Projects",
+                                         compute='_child_project_count',
                                          store=True)
     child_phase_count = fields.Integer("Phases", compute='_child_phase_count',
                                        store=True)

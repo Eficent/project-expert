@@ -19,7 +19,6 @@
 #
 ##############################################################################
 
-from lxml import etree
 import time
 from datetime import datetime, date
 

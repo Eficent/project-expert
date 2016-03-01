@@ -31,12 +31,14 @@ class project(models.Model):
         :return dict: dictionary value for created view
         """
         project = self[0]
-        task = self.env['project.task'].search([('project_id', '=', project.id)])
-        res = self.env['ir.actions.act_window'].for_xml_id('project_wbs_task', 'action_task_tree_view')
+        task = self.env['project.task'].search([('project_id', '=',
+                                                 project.id)])
+        res = self.env['ir.actions.act_window'].\
+            for_xml_id('project_wbs_task', 'action_task_tree_view')
         res['context'] = {
             'default_project_id': project.id,
         }
-        res['domain'] = "[('id', 'in', ["+','.join(
-            map(str, task.ids))+"])]"
+        res['domain'] = "[('id', 'in', [" + ','.join(map(str,
+                                                         task.ids)) + "])]"
         res['nodestroy'] = False
         return res
