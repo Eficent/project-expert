@@ -18,30 +18,24 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-from openerp.osv import fields, osv, orm
+from openerp import api, fields, models
 import openerp.addons.decimal_precision as dp
 
 
-class account_analytic_account(orm.Model):
-
+class AccountAnalyticAccount(models.Model):
     _inherit = "account.analytic.account"
 
-    _columns = {
-        'move_ids': fields.one2many('stock.move', 'analytic_account_id',
-                                    'Moves for this analytic account',
-                                    readonly=True),
-        'use_reserved_stock': fields.boolean(
-            'Use reserved stock',
-            help="Stock with reference to this analytic account "
-                 "is considered to be reserved.")
-    }
+    move_ids = fields.One2many('stock.move', 'analytic_account_id',
+                                'Moves for this analytic account',
+                                readonly=True)
+    use_reserved_stock = fields.Boolean('Use reserved stock',
+        help="Stock with reference to this analytic account "
+             "is considered to be reserved.")
 
-    def copy(self, cr, uid, id, default=None, context=None):
-        if context is None:
-            context = {}
+    @api.one
+    def copy(self, default=None):
         if default is None:
             default = {}
         default['move_ids'] = []
-        res = super(account_analytic_account, self).copy(cr, uid, id, default,
-                                                         context)
+        res = super(AccountAnalyticAccount, self).copy(default)
         return res

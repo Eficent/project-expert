@@ -19,4 +19,4 @@
 #
 ##############################################################################
 from . import report_stock_analytic_account
-from . import report_stock_move
+#from . import report_stock_move

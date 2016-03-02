@@ -18,46 +18,39 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-from openerp.osv import fields, osv
+
+from openerp import api, fields, models
 
 
-class stock_picking(osv.osv):
-
+class StockPicking(models.Model):
     _inherit = "stock.picking"
 
-    _columns = {
-        'analytic_account_ids': fields.related(
-            'move_lines', 'analytic_account_id', type='many2many',
-            relation='account.analytic.account', string='Analytic Account',
-            readonly=True),
-        'analytic_account_user_ids': fields.related('move_lines',
-                                                    'analytic_account_user_id',
-                                                    type='many2many',
-                                                    relation='res.users',
-                                                    string='Project Manager',
-                                                    readonly=True),
-    }
+    analytic_account_ids =\
+        fields.Many2one('account.analytic.account', 'Analytic Account',
+                        readonly=True,
+                        related='move_lines.analytic_account_id')
+    analytic_account_user_ids =\
+        fields.Many2one('res.users', 'Project Manager', readonly=True,
+                         related='move_lines.analytic_account_user_id')
 
 
-class stock_picking_in(osv.osv):
-
-    _inherit = "stock.picking.in"
-
-    def __init__(self, pool, cr):
-        super(stock_picking_in, self).__init__(pool, cr)
-        self._columns['analytic_account_ids'] = \
-            self.pool['stock.picking']._columns['analytic_account_ids']
-        self._columns['analytic_account_user_ids'] = \
-            self.pool['stock.picking']._columns['analytic_account_user_ids']
-
-
-class stock_picking_out(osv.osv):
-
-    _inherit = "stock.picking.out"
-
-    def __init__(self, pool, cr):
-        super(stock_picking_out, self).__init__(pool, cr)
-        self._columns['analytic_account_ids'] = \
-            self.pool['stock.picking']._columns['analytic_account_ids']
-        self._columns['analytic_account_user_ids'] = \
-            self.pool['stock.picking']._columns['analytic_account_user_ids']
+#class StockPickingIn(models.Model):
+#    _inherit = "stock.picking.in"
+#
+#    def __init__(self, pool, cr):
+#        super(StockPickingIn, self).__init__(pool, cr)
+#        self._columns['analytic_account_ids'] = \
+#            self.pool['stock.picking']._columns['analytic_account_ids']
+#        self._columns['analytic_account_user_ids'] = \
+#            self.pool['stock.picking']._columns['analytic_account_user_ids']
+#
+#
+#class StockPickingOut(models.Model):
+#    _inherit = "stock.picking.out"
+#
+#    def __init__(self, pool, cr):
+#        super(StockPickingOut, self).__init__(pool, cr)
+#        self._columns['analytic_account_ids'] = \
+#            self.pool['stock.picking']._columns['analytic_account_ids']
+#        self._columns['analytic_account_user_ids'] = \
+#            self.pool['stock.picking']._columns['analytic_account_user_ids']

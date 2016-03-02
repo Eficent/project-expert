@@ -18,13 +18,13 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-from openerp.osv import fields, osv, orm
+from openerp import api, fields, models
 import openerp.addons.decimal_precision as dp
+from openerp.tools.float_utils import float_round
 
 
-class Product(orm.Model):
-
-    _inherit = "product.product"
+class Product(models.Model):
+    _inherit = 'product.product'
 
     def get_product_available(self, cr, uid, ids, context=None):
         """ Finds whether product is available or not in particular warehouse.
@@ -201,4 +201,62 @@ class Product(orm.Model):
                 uoms_o[context.get('uom', False) or product2uom[prod_id]],
                 context=context)
             res[prod_id] -= amount
+        return res
+
+    def _product_available(self, cr, uid, ids, field_names=None, arg=False, context=None):
+        context = context or {}
+        field_names = field_names or []
+
+        domain_products = [('product_id', 'in', ids)]
+        domain_quant, domain_move_in, domain_move_out = [], [], []
+        domain_quant_loc, domain_move_in_loc, domain_move_out_loc = self._get_domain_locations(cr, uid, ids, context=context)
+        domain_move_in += self._get_domain_dates(cr, uid, ids, context=context) + [('state', 'not in', ('done', 'cancel', 'draft'))] + domain_products
+        domain_move_out += self._get_domain_dates(cr, uid, ids, context=context) + [('state', 'not in', ('done', 'cancel', 'draft'))] + domain_products
+        domain_quant += domain_products
+
+        if context.get('lot_id'):
+            domain_quant.append(('lot_id', '=', context['lot_id']))
+        if context.get('owner_id'):
+            domain_quant.append(('owner_id', '=', context['owner_id']))
+            owner_domain = ('restrict_partner_id', '=', context['owner_id'])
+            domain_move_in.append(owner_domain)
+            domain_move_out.append(owner_domain)
+        if context.get('package_id'):
+            domain_quant.append(('package_id', '=', context['package_id']))
+
+        # START OF stock_analytic_account
+        analytic_account_id = context.get('analytic_account_id', False)
+        analytic_account_clause = ''
+        if analytic_account_id:
+            analytic_account_clause = ' and analytic_account_id = %s and ' \
+                                      'analytic_reserved = True '
+            where += [analytic_account_id]
+        elif 'analytic_account_id' in context and not analytic_account_clause:
+            analytic_account_clause = ' and analytic_account_id is null '
+        # END OF stock_analytic_account
+
+        domain_move_in += domain_move_in_loc
+        domain_move_out += domain_move_out_loc
+        moves_in = self.pool.get('stock.move').read_group(cr, uid, domain_move_in, ['product_id', 'product_qty'], ['product_id'], context=context)
+        moves_out = self.pool.get('stock.move').read_group(cr, uid, domain_move_out, ['product_id', 'product_qty'], ['product_id'], context=context)
+
+        domain_quant += domain_quant_loc
+        quants = self.pool.get('stock.quant').read_group(cr, uid, domain_quant, ['product_id', 'qty'], ['product_id'], context=context)
+        quants = dict(map(lambda x: (x['product_id'][0], x['qty']), quants))
+
+        moves_in = dict(map(lambda x: (x['product_id'][0], x['product_qty']), moves_in))
+        moves_out = dict(map(lambda x: (x['product_id'][0], x['product_qty']), moves_out))
+        res = {}
+        for product in self.browse(cr, uid, ids, context=context):
+            id = product.id
+            qty_available = float_round(quants.get(id, 0.0), precision_rounding=product.uom_id.rounding)
+            incoming_qty = float_round(moves_in.get(id, 0.0), precision_rounding=product.uom_id.rounding)
+            outgoing_qty = float_round(moves_out.get(id, 0.0), precision_rounding=product.uom_id.rounding)
+            virtual_available = float_round(quants.get(id, 0.0) + moves_in.get(id, 0.0) - moves_out.get(id, 0.0), precision_rounding=product.uom_id.rounding)
+            res[id] = {
+                'qty_available': qty_available,
+                'incoming_qty': incoming_qty,
+                'outgoing_qty': outgoing_qty,
+                'virtual_available': virtual_available,
+            }
         return res

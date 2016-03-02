@@ -1,7 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <openerp>
     <data>
-    
+
+        <record id="quant_analytic_search_view" model="ir.ui.view">
+            <field name="name">stock.quant.search</field>
+            <field name="model">stock.quant</field>
+            <field name="priority" eval="10"/>
+            <field name="inherit_id" ref="stock.quant_search_view"/>
+            <field name="arch" type="xml">
+                <field name="lot_id" position="after">
+                    <field name="analytic_account_id"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_stock_analytic_quant_form" model="ir.ui.view">
+            <field name="name">stock.quant.form</field>
+            <field name="model">stock.quant</field>
+            <field name="priority" eval="10"/>
+            <field name="inherit_id" ref="stock.view_stock_quant_form"/>
+            <field name="arch" type="xml">
+                <field name="lot_id" position="after">
+                    <field name="analytic_account_id"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_stock_analytic_quant_tree" model="ir.ui.view">
+            <field name="name">stock.quant.tree</field>
+            <field name="model">stock.quant</field>
+            <field eval="10" name="priority"/>
+            <field name="inherit_id" ref="stock.view_stock_quant_tree"/>
+            <field name="arch" type="xml">
+                <field name="lot_id" position="after">
+                    <field name="analytic_account_id"/>
+                </field>
+            </field>
+        </record>
+
         <record id="view_move_form" model="ir.ui.view">
             <field name="name">stock.move.form</field>
             <field name="model">stock.move</field>
@@ -9,7 +45,7 @@
             <field eval="1" name="priority"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='company_id']" position="after">
-                	<field name="analytic_account_id" />
+                    <field name="analytic_account_id"/>
                     <field name="analytic_reserved"/>
                 </xpath>
             </field>
@@ -22,7 +58,7 @@
             <field eval="1" name="priority"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='location_id']" position="after">
-                	<field name="analytic_account_id" />
+                    <field name="analytic_account_id"/>
                     <field name="analytic_reserved"/>
                 </xpath>
             </field>
@@ -33,9 +69,9 @@
             <field name="model">stock.move</field>
             <field eval="2" name="priority"/>
             <field name="inherit_id" ref="stock.view_move_picking_form"/>
-            <field name="arch" type="xml">                     
+            <field name="arch" type="xml">
                 <xpath expr="//field[@name='location_id']" position="after">
-                	<field name="analytic_account_id"/>              	                 
+                    <field name="analytic_account_id"/>
                 </xpath>
             </field>
         </record>
@@ -47,52 +83,49 @@
             <field eval="4" name="priority"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='location_id']" position="after">
-                	<field name="analytic_account_id"/>
+                    <field name="analytic_account_id"/>
                     <field name="analytic_reserved"/>
                 </xpath>
             </field>
         </record>
-
 
         <record id="view_move_search_analytic" model="ir.ui.view">
             <field name="name">stock.move.search</field>
             <field name="model">stock.move</field>
             <field name="inherit_id" ref="stock.view_move_search"/>
             <field eval="3" name="priority"/>
-            <field name="arch" type="xml">        
-                <xpath expr="//field[@name='name']" position="after">
-                	<field name="analytic_account_id"/>
-                    <field name="analytic_reserved"/>
-                </xpath>
-            </field>
-        </record>   
-
-        <record id="view_move_tree_reception_picking_analytic" model="ir.ui.view">
-            <field name="name">stock.move.tree2</field>
-            <field name="model">stock.move</field>
-            <field name="inherit_id" ref="stock.view_move_tree_reception_picking"/>
-            <field name="priority" eval="6"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='origin']" position="after">
-                	<field name="analytic_account_id"/>
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="analytic_account_id"/>
                     <field name="analytic_reserved"/>
                 </xpath>
             </field>
         </record>
 
-        #
-        # Lot composition (history)
-        #
+<!--         <record id="view_move_tree_reception_picking_analytic" model="ir.ui.view"> -->
+<!--             <field name="name">stock.move.tree2</field> -->
+<!--             <field name="model">stock.move</field> -->
+<!--             <field name="inherit_id" ref="stock.view_move_tree_reception_picking"/> -->
+<!--             <field name="priority" eval="6"/> -->
+<!--             <field name="arch" type="xml"> -->
+<!--                 <xpath expr="//field[@name='origin']" position="after"> -->
+<!--                 	<field name="analytic_account_id"/> -->
+<!--                     <field name="analytic_reserved"/> -->
+<!--                 </xpath> -->
+<!--             </field> -->
+<!--         </record> -->
+
+        <!-- Lot composition (history) -->
         <record id="stock_move_tree" model="ir.ui.view">
             <field name="name">Stock Moves</field>
             <field name="model">stock.move</field>
             <field name="field_parent">move_history_ids</field>
             <field name="inherit_id" ref="stock.stock_move_tree"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='tracking_id']" position="after">
-                	<field name="analytic_account_id"/>
+                <field name="product_packaging" position="after">
+                    <field name="analytic_account_id"/>
                     <field name="analytic_reserved"/>
-                </xpath>
+                </field>
             </field>
         </record>
 
@@ -101,39 +134,36 @@
             <field name="model">stock.inventory.line</field>
             <field name="inherit_id" ref="stock.stock_inventory_line_tree"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='product_uom']" position="after">
+                <xpath expr="//field[@name='product_uom_id']" position="after">
                 	<field name="analytic_account_id"/>
                 </xpath>
             </field>
         </record>
-        <record id="view_inventory_line_form" model="ir.ui.view">
-            <field name="name">stock.inventory.line.form</field>
-            <field name="model">stock.inventory.line</field>
-            <field name="inherit_id" ref="stock.view_inventory_line_form"/>
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='product_uom']" position="after">
-                	<field name="analytic_account_id"/>
-                </xpath>
-            </field>
-        </record>
+
+<!--         <record id="view_inventory_line_form" model="ir.ui.view"> -->
+<!--             <field name="name">stock.inventory.line.form</field> -->
+<!--             <field name="model">stock.inventory.line</field> -->
+<!--             <field name="inherit_id" ref="stock.view_inventory_line_form"/> -->
+<!--             <field name="arch" type="xml"> -->
+<!--                 <xpath expr="//field[@name='product_uom_id']" position="after"> -->
+<!--                     <field name="analytic_account_id"/> -->
+<!--                 </xpath> -->
+<!--             </field> -->
+<!--         </record> -->
 
         <record id="view_inventory_form" model="ir.ui.view">
             <field name="name">stock.inventory.form</field>
             <field name="model">stock.inventory</field>
             <field name="inherit_id" ref="stock.view_inventory_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='inventory_line_id']/tree/field[@name='product_uom']"
-                       position="after">
-                	<field name="analytic_account_id"/>
+                <xpath expr="//field[@name='line_ids']/tree/field[@name='product_uom_id']" position="after">
+                    <field name="analytic_account_id"/>
                 </xpath>
-                <xpath
-                        expr="//field[@name='inventory_line_id']/form//field[@name='product_uom']"
-                       position="after">
-                	<field name="analytic_account_id"/>
-                </xpath>
-                <xpath expr="//field[@name='move_ids']/tree/field[@name='product_uom']"
-                       position="after">
-                	<field name="analytic_account_id"/>
+<!--                 <xpath expr="//field[@name='line_ids']/form//field[@name='product_uom_id']" position="after"> -->
+<!--                     <field name="analytic_account_id"/> -->
+<!--                 </xpath> -->
+                <xpath expr="//field[@name='move_ids']/tree/field[@name='product_uom']" position="after">
+                    <field name="analytic_account_id"/>
                 </xpath>
             </field>
         </record>

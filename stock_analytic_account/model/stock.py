@@ -18,7 +18,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-from openerp.osv import fields, osv, orm
+from openerp import api, fields, models
+from openerp.exceptions import Warning
 from openerp.tools.translate import _
 import logging
 from openerp import netsvc
@@ -26,46 +27,47 @@ _logger = logging.getLogger(__name__)
 from openerp.tools import float_compare
 
 
-class StockMove(orm.Model):
+class StockQuant(models.Model):
+    _inherit = 'stock.quant'
 
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account')
+
+
+class StockMove(models.Model):
     _inherit = "stock.move"
 
-    _columns = {        
-        'analytic_account_id': fields.many2one('account.analytic.account',
-                                               'Analytic Account'),
-        'analytic_reserved': fields.boolean(
-            'Reserved',
-            help="Reserved for the Analytic Account"),
-        'analytic_account_user_id': fields.related(
-            'analytic_account_id', 'user_id', type='many2one',
-            relation='res.users', string='Project Manager', store=True,
-            readonly=True),
-    }
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account')
+    analytic_reserved =\
+        fields.Boolean('Reserved', help="Reserved for the Analytic Account")
+    analytic_account_user_id =\
+        fields.Many2one('res.users', 'Project Manager', store=True,
+                        related='analytic_account_id.user_id', readonly=True)
 
-    def _get_analytic_reserved(self, cr, uid, vals, context=None):
-        context = context or {}
-        analytic_obj = self.pool['account.analytic.account']
-        aaid = vals['analytic_account_id']
-        if aaid:
-            aa = analytic_obj.browse(cr, uid, aaid, context=context)
-            return aa.use_reserved_stock
-        else:
-            return False
+    @api.model
+    def _get_analytic_reserved(self, vals):
+        aa_id = vals.get('analytic_account_id')
+        if aa_id:
+            analytic_obj = self.env['account.analytic.account']
+            return analytic_obj.browse(aa_id).use_reserved_stock
+        return False
 
-    def create(self, cr, uid, vals, context=None):
+    @api.model
+    def create(self, vals):
         if 'analytic_account_id' in vals:
-            vals['analytic_reserved'] = self._get_analytic_reserved(
-                cr, uid, vals, context=context)
-        return super(StockMove, self).create(cr, uid, vals, context=context)
+            vals['analytic_reserved'] = self._get_analytic_reserved(vals)
+        return super(StockMove, self).create(vals)
 
-    def write(self, cr, uid, ids, vals, context=None):
+    @api.multi
+    def write(self, vals):
         if 'analytic_account_id' in vals:
-            vals['analytic_reserved'] = self._get_analytic_reserved(
-                cr, uid, vals, context=context)
-        return super(StockMove, self).write(cr, uid, ids, vals,
-                                            context=context)
+            vals['analytic_reserved'] = self._get_analytic_reserved(vals)
+        return super(StockMove, self).write(vals)
 
-    def action_scrap(self, cr, uid, ids, quantity, location_id, context=None):
+    @api.multi
+    def action_scrap(self, quantity, location_id, restrict_lot_id=False,
+                     restrict_partner_id=False):
         """ Move the scrap/damaged product into scrap location
         @param cr: the database cursor
         @param uid: the user id
@@ -74,57 +76,70 @@ class StockMove(orm.Model):
         @param location_id : specify scrap location
         @param context: context arguments
         @return: Scraped lines
-        Attention!!! This method overrides the standard without calling Super
-        The changes introduced by this module are encoded within a
-        comments START OF and END OF stock_analytic_account.
         """
-
-        # quantity should in MOVE UOM
+        quant_obj = self.env["stock.quant"]
+        #quantity should be given in MOVE UOM
         if quantity <= 0:
-            raise osv.except_osv(
-                _('Warning!'),
-                _('Please provide a positive quantity to scrap.'))
+            raise Warning(_('Please provide a positive quantity to scrap.'))
         res = []
-        for move in self.browse(cr, uid, ids, context=context):
+        for move in self:
             source_location = move.location_id
             if move.state == 'done':
                 source_location = move.location_dest_id
-            if source_location.usage != 'internal':
-                # restrict to scrap from a virtual location
-                # because it's meaningless and it may introduce
-                # errors in stock ('creating' new products from nowhere)
-                raise osv.except_osv(
-                    _('Error!'),
-                    _('Forbidden operation: it is not allowed '
-                      'to scrap products from a virtual location.'))
+            # Previously used to prevent scraping from virtual location but not
+                # necessary anymore
+            # if source_location.usage != 'internal':
+                # restrict to scrap from a virtual location because it's
+                # meaningless and it may introduce errors in stock
+                # ('creating' new products from nowhere)
+                # raise osv.except_osv(_('Error!'),
+                # _('Forbidden operation: it is not allowed to scrap products \
+                # from a virtual location.'))
             move_qty = move.product_qty
             uos_qty = quantity / move_qty * move.product_uos_qty
             default_val = {
                 'location_id': source_location.id,
-                'product_qty': quantity,
+                'product_uom_qty': quantity,
                 'product_uos_qty': uos_qty,
                 'state': move.state,
                 'scrapped': True,
                 'location_dest_id': location_id,
-                'tracking_id': move.tracking_id.id,
-                'prodlot_id': move.prodlot_id.id,
+                'restrict_lot_id': restrict_lot_id,
+                'restrict_partner_id': restrict_partner_id,
                 # START OF stock_analytic_account
                 'analytic_account_id': move.analytic_account_id.id,
                 # ENF OF stock_analytic_account
             }
-            new_move = self.copy(cr, uid, move.id, default_val)
+            new_move = move.copy(default_val)
 
             res += [new_move]
-            product_obj = self.pool.get('product.product')
-            for product in product_obj.browse(cr, uid, [move.product_id.id],
-                                              context=context):
+            product_obj = self.env['product.product']
+            for product in product_obj.browse([move.product_id.id]):
                 if move.picking_id:
                     uom = product.uom_id.name if product.uom_id else ''
-                    message = _("%s %s %s has been <b>moved to</b> scrap.") \
-                        % (quantity, uom, product.name)
+                    message = _("%s %s %s has been <b>moved to</b> scrap.") %\
+                        (quantity, uom, product.name)
                     move.picking_id.message_post(body=message)
 
-        self.action_done(cr, uid, res, context=context)
+            # We "flag" the quant from which we want to scrap the products.
+            # To do so:
+            #    - we select the quants related to the move we scrap from
+            #    - we reserve the quants with the scrapped move
+            # See self.action_done, et particularly how is defined the
+            # "prefered_domain" for clarification
+            if move.state == 'done' and new_move.location_id.usage not in\
+                    ('supplier', 'inventory', 'production'):
+                domain = [('qty', '>', 0), ('history_ids', 'in', [move.id])]
+                # We use scrap_move data since a reservation makes sense
+                # for a move not already done
+                quants =\
+                    quant_obj.quants_get_prefered_domain(new_move.location_id,
+                        new_move.product_id, quantity, domain=domain,
+                        prefered_domain_list=[],
+                        restrict_lot_id=new_move.restrict_lot_id.id,
+                        restrict_partner_id=new_move.restrict_partner_id.id)
+                quant_obj.quants_reserve(quants, new_move)
+        self.action_done(res)
         return res
 
     def check_assign(self, cr, uid, ids, context=None):
@@ -181,8 +196,76 @@ class StockMove(orm.Model):
                 wf_service.trg_write(uid, 'stock.picking', pick_id, cr)
         return count
 
+#  below method needed to migrate to replace check_assign
 
-class stock_location(orm.Model):
+    @api.multi
+    def action_assign(self):
+        """ Checks the product type and accordingly writes the state.
+        """
+        quant_obj = self.env["stock.quant"]
+        to_assign_moves = set()
+        main_domain = {}
+        todo_moves = []
+        operations = set()
+        for move in self:
+            if move.state not in ('confirmed', 'waiting', 'assigned'):
+                continue
+            if move.location_id.usage in ('supplier', 'inventory', 'production'):
+                to_assign_moves.add(move.id)
+                #in case the move is returned, we want to try to find quants before forcing the assignment
+                if not move.origin_returned_move_id:
+                    continue
+            if move.product_id.type == 'consu':
+                to_assign_moves.add(move.id)
+                continue
+            else:
+                todo_moves.append(move)
+
+                #we always keep the quants already assigned and try to find the remaining quantity on quants not assigned only
+                main_domain[move.id] = [('reservation_id', '=', False), ('qty', '>', 0)]
+
+                #if the move is preceeded, restrict the choice of quants in the ones moved previously in original move
+                ancestors = self.find_move_ancestors(move)
+                if move.state == 'waiting' and not ancestors:
+                    #if the waiting move hasn't yet any ancestor (PO/MO not confirmed yet), don't find any quant available in stock
+                    main_domain[move.id] += [('id', '=', False)]
+                elif ancestors:
+                    main_domain[move.id] += [('history_ids', 'in', ancestors)]
+
+                #if the move is returned from another, restrict the choice of quants to the ones that follow the returned move
+                if move.origin_returned_move_id:
+                    main_domain[move.id] += [('history_ids', 'in', move.origin_returned_move_id.id)]
+                for link in move.linked_move_operation_ids:
+                    operations.add(link.operation_id)
+        # Check all ops and sort them: we want to process first the packages, then operations with lot then the rest
+        operations = list(operations)
+        operations.sort(key=lambda x: ((x.package_id and not x.product_id) and -4 or 0) + (x.package_id and -2 or 0) + (x.lot_id and -1 or 0))
+        for ops in operations:
+            #first try to find quants based on specific domains given by linked operations
+            for record in ops.linked_move_operation_ids:
+                move = record.move_id
+                if move.id in main_domain:
+                    domain = main_domain[move.id] + self.pool.get('stock.move.operation.link').get_specific_domain(cr, uid, record, context=context)
+                    qty = record.qty
+                    if qty:
+                        quants = quant_obj.quants_get_prefered_domain(cr, uid, ops.location_id, move.product_id, qty, domain=domain, prefered_domain_list=[], restrict_lot_id=move.restrict_lot_id.id, restrict_partner_id=move.restrict_partner_id.id, context=context)
+                        quant_obj.quants_reserve(cr, uid, quants, move, record, context=context)
+        for move in todo_moves:
+            if move.linked_move_operation_ids:
+                continue
+            #then if the move isn't totally assigned, try to find quants without any specific domain
+            if move.state != 'assigned':
+                qty_already_assigned = move.reserved_availability
+                qty = move.product_qty - qty_already_assigned
+                quants = quant_obj.quants_get_prefered_domain(cr, uid, move.location_id, move.product_id, qty, domain=main_domain[move.id], prefered_domain_list=[], restrict_lot_id=move.restrict_lot_id.id, restrict_partner_id=move.restrict_partner_id.id, context=context)
+                quant_obj.quants_reserve(cr, uid, quants, move, context=context)
+
+        #force assignation of consumable products and incoming from supplier/inventory/production
+        if to_assign_moves:
+            self.force_assign(cr, uid, list(to_assign_moves), context=context)
+
+
+class StockLocation(models.Model):
     _inherit = "stock.location"
 
     def _product_reserve(self, cr, uid, ids, product_id, product_qty,
@@ -191,7 +274,7 @@ class stock_location(orm.Model):
         Override the _product_reserve method in order to add the analytic
         account
         """
-        result = super(stock_location, self)._product_reserve(
+        result = super(StockLocation, self)._product_reserve(
             cr, uid, ids, product_id, product_qty, context, lock)
         if context is None:
             context = {}
@@ -266,24 +349,22 @@ class stock_location(orm.Model):
         return False
 
 
-class StockInventoryLine(orm.Model):
+class StockInventoryLine(models.Model):
     _inherit = "stock.inventory.line"
 
-    _columns = {
-        'analytic_account_id': fields.many2one('account.analytic.account',
-                                               'Analytic Account'),
-    }
+    analytic_account_id = fields.Many2one('account.analytic.account', 'Analytic Account')
 
-    def _check_inventory_line(self, cr, uid, ids, context=None):
+    @api.multi
+    @api.constrains('location_id', 'product_id', 'prod_lot_id', 'analytic_account_id')
+    def _check_inventory_line(self):
         """Refuse to record duplicate inventory lines
         Inventory lines with the sale Product, Location, Serial Number,
         Analytic Account and date are not taken into account correctly when
         computing the stock level difference, so we'll simply refuse to
         record them rather than allow users to introduce errors without
         even knowing it."""
-        for line in self.browse(cr, uid, ids, context=context):
-            inv_lines = self.search(
-                cr, uid, [
+        for line in self:
+            inv_lines = self.search([
                     ('product_id', '=', line.product_id.id),
                     ('location_id', '=', line.location_id.id),
                     ('prod_lot_id', '=', (
@@ -292,10 +373,10 @@ class StockInventoryLine(orm.Model):
                         or False)),
                     ('inventory_id.date', '=', line.inventory_id.date),
                     ('analytic_account_id', '=', line.analytic_account_id.id),
-                    ('id', 'not in', ids),
-                ], context=context)
+                    ('id', 'not in', self._ids),
+                ])
             if inv_lines:
-                raise orm.except_orm(
+                raise Warning(
                     _('Duplicate line detected'),
                     _('You cannot enter more than a single inventory line for '
                       'the same Product, Location, Serial Number, Analytic '
@@ -310,17 +391,17 @@ class StockInventoryLine(orm.Model):
                         (line.analytic_account_id and
                          line.analytic_account_id.name or _('N/A')))
                 )
-        return True
 
-    _constraints = [
-        (_check_inventory_line, 'Duplicate line detected',
-         ['location_id', 'product_id', 'prod_lot_id', 'analytic_account_id'])
-    ]
+#    _constraints = [
+#        (_check_inventory_line, 'Duplicate line detected',
+#         ['location_id', 'product_id', 'prod_lot_id', 'analytic_account_id'])
+#    ]
 
 
-class StockInventory(orm.Model):
+class StockInventory(models.Model):
     _inherit = "stock.inventory"
 
+    @api.model
     def _inventory_line_hook(self, cr, uid, inventory_line, move_vals):
         """ Creates a stock move from an inventory line
         @param inventory_line:
@@ -330,25 +411,24 @@ class StockInventory(orm.Model):
         if inventory_line.analytic_account_id:
             move_vals['analytic_account_id'] = \
                 inventory_line.analytic_account_id.id
-        return super(StockInventory, self)._inventory_line_hook(
-            cr, uid, inventory_line, move_vals)
+        return super(StockInventory, self)._inventory_line_hook(inventory_line,
+                                                                move_vals)
 
-    def action_confirm(self, cr, uid, ids, context=None):
+    @api.multi
+    def action_confirm(self):
         """ Confirm the inventory and writes its finished date
         Attention!!! This method overrides the standard without calling Super
         The changes introduced by this module are encoded within a
         comments START OF and END OF stock_analytic_account.
         @return: True
         """
-        if context is None:
-            context = {}
         # to perform the correct inventory corrections we need analyze
         # stock location by
         # location, never recursively, so we use a special context
-        product_context = dict(context, compute_child=False)
+        product_context = dict(self._context, compute_child=False)
 
-        location_obj = self.pool.get('stock.location')
-        for inv in self.browse(cr, uid, ids, context=context):
+        location_obj = self.env['stock.location']
+        for inv in self:
             move_ids = []
             for line in inv.inventory_line_id:
                 pid = line.product_id.id
@@ -363,8 +443,7 @@ class StockInventory(orm.Model):
                     prodlot_id=line.prod_lot_id.id,
                     analytic_account_id=line.analytic_account_id.id,)
                 # ENF OF stock_analytic_account
-                amount = location_obj._product_get(
-                    cr, uid, line.location_id.id, [pid], product_context)[pid]
+                amount = location_obj._product_get(line.location_id.id, [pid], product_context)[pid]
                 change = line.product_qty - amount
                 lot_id = line.prod_lot_id.id
                 analytic_account_id = line.analytic_account_id.id or False
@@ -391,10 +470,7 @@ class StockInventory(orm.Model):
                             'location_id': line.location_id.id,
                             'location_dest_id': location_id,
                         })
-                    move_ids.append(self._inventory_line_hook(cr, uid, line,
-                                                              value))
-            self.write(cr, uid, [inv.id], {'state': 'confirm',
-                                           'move_ids': [(6, 0, move_ids)]})
-            self.pool.get('stock.move').action_confirm(cr, uid, move_ids,
-                                                       context=context)
+                    move_ids.append(self._inventory_line_hook(line, value))
+            inv.write({'state': 'confirm', 'move_ids': [(6, 0, move_ids)]})
+            self.env['stock.move'].action_confirm(move_ids)
         return True
