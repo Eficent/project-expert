@@ -26,20 +26,14 @@
     "author": "Eficent",
     "website": "www.eficent.com",
     "category": "Generic Modules/Projects & Services",
-    "depends": ["base", "project", "analytic", "project_wbs"],
+    "depends": ["project_wbs"],
     "description": """
     """,
-    "init_xml": [],
-    "update_xml": [
+    "data": [
         "analytic_account_sequence_view.xml",
         "analytic_account_sequence_data.xml",
         "account_analytic_account_view.xml",
         "security/ir.model.access.csv",
-    ],
-    'demo_xml': [
-
-    ],
-    'test':[
     ],
     'installable': True,
     'active': False,
