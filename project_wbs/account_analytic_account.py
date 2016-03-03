@@ -27,6 +27,7 @@ class AccountAnalyticAccount(models.Model):
 
     _inherit = 'account.analytic.account'
 
+    @api.multi
     @api.depends('complete_wbs_code', 'code', 'name', 'parent_id')
     def _complete_wbs_code_calc(self):
         if not self._ids:
@@ -46,6 +47,7 @@ class AccountAnalyticAccount(models.Model):
             res.append((account.id, data))
         return dict(res)
 
+    @api.multi
     @api.depends('complete_wbs_name', 'code', 'name', 'parent_id')
     def _complete_wbs_name_calc(self):
         if not self._ids:
@@ -64,6 +66,7 @@ class AccountAnalyticAccount(models.Model):
             res.append((account.id, data))
         return dict(res)
 
+    @api.multi
     @api.depends('parent_id', 'name')
     def _wbs_indent_calc(self):
         if not self._ids:
@@ -99,28 +102,33 @@ class AccountAnalyticAccount(models.Model):
                 res[analytic_account.id] = 0
         return res
 
+    @api.multi
     @api.depends('child_project_count')
     def _child_project_count(self):
         for account in self:
             account.child_project_count = account._child_count('project')
 
+    @api.multi
     @api.depends('child_phase_count')
     def _child_phase_count(self):
         for account in self:
             account.child_phase_count = account._child_count('phase')
 
+    @api.multi
     @api.depends('child_deliverable_count')
     def _child_deliverable_count(self):
         for account in self:
             account.child_deliverable_count = account.\
                 _child_count('deliverable')
 
+    @api.multi
     @api.depends('child_work_package_count')
     def _child_work_package_count(self):
         for account in self:
             account.child_work_package_count = account.\
                 _child_count('work_package')
 
+    @api.multi
     @api.depends('child_unclassified_count')
     def _child_unclassified_count(self):
         for account in self:
@@ -144,6 +152,7 @@ class AccountAnalyticAccount(models.Model):
                 return analytic_account_ids[0][0]
         return None
 
+    @api.multi
     @api.depends('project_analytic_account_id', 'account_class', 'parent_id')
     def _get_project_account_id(self):
         if not self._ids:
