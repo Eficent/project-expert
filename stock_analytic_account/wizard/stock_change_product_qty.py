@@ -66,11 +66,15 @@ class stock_change_product_qty(orm.TransientModel):
                 'location_id': data.location_id.id,
                 'product_id': rec_id,
                 'product_uom': res_original.uom_id.id,
-                'prod_lot_id': data.prodlot_id.id,
+                'lot_id': data.lot_id.id,
                 'analytic_account_id': data.analytic_account_id.id,
             }
             inventry_line_obj.create(cr, uid, line_data, context=context)
-            inventry_obj.action_confirm(cr, uid, [inventory_id],
-                                        context=context)
+#            inventry_obj.action_confirm(cr, uid, [inventory_id],
+#                                        context=context)
+            context.update({
+                'analytic_account_id': data.analytic_account_id.id,
+                'analytic_reserved': True,
+            })
             inventry_obj.action_done(cr, uid, [inventory_id], context=context)
         return {}

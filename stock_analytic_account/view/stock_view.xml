@@ -11,6 +11,9 @@
                 <field name="lot_id" position="after">
                     <field name="analytic_account_id"/>
                 </field>
+                <filter name="productgroup" position="after">
+                    <filter name="by_analytic_account" string="Analytic Account" context="{'group_by' : 'analytic_account_id'}"/>
+                </filter>
             </field>
         </record>
 
@@ -99,6 +102,9 @@
                     <field name="analytic_account_id"/>
                     <field name="analytic_reserved"/>
                 </xpath>
+                <filter name="by_product" position="after">
+                    <filter string="Analytic Account" name="by_analytic_account" context="{'group_by':'analytic_account_id'}"/>
+                </filter>
             </field>
         </record>
 

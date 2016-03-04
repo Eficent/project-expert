@@ -26,7 +26,24 @@ from openerp.tools.float_utils import float_round
 class Product(models.Model):
     _inherit = 'product.product'
 
-    def get_product_available(self, cr, uid, ids, context=None):
+    @api.multi
+    def _get_domain_locations(self):
+        """
+        Override to add condition for analytic account.
+        """
+        domain_quant_loc, domain_move_in_loc, domain_move_out_loc =\
+            super(Product, self)._get_domain_locations()
+        analytic_account_id = self._context.get('analytic_account_id', False)
+        print "\n\n########    ", analytic_account_id, self.env.args[2]
+        analytic_domain = [('analytic_account_id', '=', analytic_account_id)]
+        domain_quant_loc += analytic_domain
+        if analytic_account_id:
+            analytic_domain += [('analytic_reserved', '=', True)]
+        domain_move_in_loc += analytic_domain
+        domain_move_out_loc += analytic_domain
+        return (domain_quant_loc, domain_move_in_loc, domain_move_out_loc)
+
+    def xget_product_available(self, cr, uid, ids, context=None):
         """ Finds whether product is available or not in particular warehouse.
         Attention!!! This method overrides the standard without calling Super
         The changes introduced by this module are encoded within a
@@ -203,7 +220,7 @@ class Product(models.Model):
             res[prod_id] -= amount
         return res
 
-    def _product_available(self, cr, uid, ids, field_names=None, arg=False, context=None):
+    def x_product_available(self, cr, uid, ids, field_names=None, arg=False, context=None):
         context = context or {}
         field_names = field_names or []
 
