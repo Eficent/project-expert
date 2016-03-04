@@ -22,7 +22,7 @@
 from openerp import api, fields, models
 
 
-class project(models.Model):
+class Project(models.Model):
     _inherit = "project.project"
 
     @api.multi
