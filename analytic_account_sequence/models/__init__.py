@@ -2,7 +2,7 @@
 ##############################################################################
 #
 #    Copyright (C) 2014 Eficent (<http://www.eficent.com/>)
-#             <contact@eficent.com>
+#               <contact@eficent.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -19,24 +19,5 @@
 #
 ##############################################################################
 
-
-{
-    "name": "Analytic account code sequence",
-    "version": "1.0",
-    "author": "Eficent",
-    "website": "www.eficent.com",
-    "category": "Generic Modules/Projects & Services",
-    "depends": ["project_wbs"],
-    "description": """
-    """,
-    "data": [
-        "views/analytic_account_sequence_view.xml",
-        "data/analytic_account_sequence_data.xml",
-        "views/account_analytic_account_view.xml",
-        "security/ir.model.access.csv",
-    ],
-    'installable': True,
-    'active': False,
-    'certificate': '',
-    'application': True,
-}
+from . import analytic_account_sequence
+from . import account_analytic_account

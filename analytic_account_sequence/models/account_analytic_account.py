@@ -22,7 +22,7 @@
 from openerp import api, fields, models
 
 
-class account_analytic_account(models.Model):
+class AccountAnalyticAccount(models.Model):
 
     _inherit = 'account.analytic.account'
 
@@ -46,8 +46,8 @@ class account_analytic_account(models.Model):
                 'number_next': 1,
                 'number_increment': ir_sequence.number_increment,
                 'padding': ir_sequence.padding,
-                'company_id': ir_sequence.company_id and\
-                    ir_sequence.company_id.id or False,
+                'company_id': ir_sequence.company_id and
+                ir_sequence.company_id.id or False,
             }
         return account_sequence_obj.create(vals)
 
@@ -61,9 +61,9 @@ class account_analytic_account(models.Model):
 
     @api.model
     def create(self, vals):
-        #Assign a new code, from the parent account's sequence, if it exists.
+        # Assign a new code, from the parent account's sequence, if it exists.
         # If there's no parent, or the parent has no sequence, assign from
-        #the basic sequence of the analytic account.
+        # the basic sequence of the analytic account.
         new_code = False
         if 'parent_id' in vals and vals['parent_id']:
             account_obj = self.env['account.analytic.account']
@@ -78,9 +78,9 @@ class account_analytic_account(models.Model):
             new_code = self.env['ir.sequence'].get('account.analytic.account')
         if 'code' in vals and not vals['code'] and new_code:
             vals['code'] = new_code
-        analytic_account = super(account_analytic_account, self).create(vals)
+        analytic_account = super(AccountAnalyticAccount, self).create(vals)
         if 'sequence_ids' not in vals or\
-            ('sequence_ids' in vals and not vals['sequence_ids']):
+                ('sequence_ids' in vals and not vals['sequence_ids']):
             analytic_account._create_sequence()
         return analytic_account
 
@@ -94,7 +94,7 @@ class account_analytic_account(models.Model):
             if parent.sequence_ids:
                 new_code = obj_sequence.next_by_id(parent.sequence_ids[0].id)
                 data.update({'code': new_code})
-        return super(account_analytic_account, self).write(data)
+        return super(AccountAnalyticAccount, self).write(data)
 
     @api.model
     def map_sequences(self, new_analytic_account):
@@ -112,6 +112,6 @@ class account_analytic_account(models.Model):
         if default is None:
             default = {}
         default['sequence_ids'] = []
-        res = super(account_analytic_account, self).copy(default)
+        res = super(AccountAnalyticAccount, self).copy(default)
         self.map_sequences(res)
         return res

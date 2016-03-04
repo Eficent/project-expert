@@ -21,14 +21,13 @@
 
 import logging
 import time
-from openerp import api, fields, models
+from openerp import api, fields, models, _
 from openerp.exceptions import Warning
-from openerp.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 
 
-class analytic_account_sequence(models.Model):
+class AnalyticAccountSequence(models.Model):
 
     _name = 'analytic.account.sequence'
 
@@ -66,47 +65,47 @@ class analytic_account_sequence(models.Model):
         return self.write({'number_next': self.number_next or 0})
 
     analytic_account_id = fields.Many2one('account.analytic.account',
-                                           'Analytic account',
-                                           required=True,
-                                           ondelete='cascade')
+                                          'Analytic account',
+                                          required=True,
+                                          ondelete='cascade')
     name = fields.Char('Name', required=True)
     code = fields.Selection(string='Code', selection='_code_get')
     implementation = fields.Selection([('standard', 'Standard'),
                                        ('no_gap', 'No gap')], 'Implementation',
                                       required=True, default="standard",
-        help="Two sequence object implementations are offered: Standard "
-        "and 'No gap'. The later is slower than the former but forbids any"
-        " gap in the sequence (while they are possible in the former).")
+                                      help="Two sequence object "
+                                      "implementations are offered: Standard "
+                                      "and 'No gap'. The later is slower than "
+                                      "the former but forbids any gap in the"
+                                      " sequence (while they are possible"
+                                      " in the former).")
     active = fields.Boolean('Active', default=True)
-    prefix = fields.Char('Prefix',
-                          help="Prefix value of the record for "
-                               "the sequence")
-    suffix = fields.Char('Suffix',
-                          help="Suffix value of the record for "
-                               "the sequence")
+    prefix = fields.Char('Prefix', help="Prefix value of the record for "
+                         "the sequence")
+    suffix = fields.Char('Suffix', help="Suffix value of the record for "
+                         "the sequence")
     number_next = fields.Integer('Next Number', required=True, default=1,
-                                  help="Next number of this sequence")
+                                 help="Next number of this sequence")
     number_next_actual = fields.Integer(compute='_get_number_next_actual',
                                         inverse='_set_number_next_actual',
                                         required=True, string='Next Number',
                                         default=1, store=True,
-        help='Next number that will be used. This number can be '
-             'incremented frequently so the displayed value might '
-             'already be obsolete')
-    number_increment = fields.Integer('Increment Number',
-                                       required=True, default=1,
-                                       help="The next number of the "
-                                            "sequence will be incremented "
-                                            "by this number")
+                                        help='Next number that will be used. '
+                                        'This number can be incremented '
+                                        'frequently so the displayed value '
+                                        ' might already be obsolete')
+    number_increment = fields.Integer('Increment Number', required=True,
+                                      default=1, help="The next number of the "
+                                      "sequence will be incremented "
+                                      "by this number")
     padding = fields.Integer('Number Padding', required=True, default=0,
-                              help="OpenERP will automatically adds "
-                                   "some '0' on the left of the "
-                                   "'Next Number' to get the required "
-                                   "padding size.")
+                             help="OpenERP will automatically adds some '0' on"
+                             " the left of the 'Next Number' to get the "
+                             "required padding size.")
     company_id = fields.\
-        Many2one('res.company', 'Company',
-                 default=lambda self: self.env['res.company'].\
-                    _company_default_get('analytic.account.sequence'))
+        Many2one('res.company', 'Company', default=lambda self:
+                 self.env['res.company'].
+                 _company_default_get('analytic.account.sequence'))
 
     _sql_constraints = [('unique_analytic_account_id',
                          'unique (analytic_account_id)',
@@ -169,7 +168,7 @@ class analytic_account_sequence(models.Model):
         assert isinstance(self.id, (int, long))
         seq_name = 'analytic_account_sequence_%05d' % (self.id,)
         self._cr.execute("SELECT relname FROM pg_class WHERE relkind = %s "
-                   "AND relname=%s", ('S', seq_name))
+                         "AND relname=%s", ('S', seq_name))
         if not self._cr.fetchone():
             # sequence is not created yet, we're inside create() so
             # ignore it, will be set later
@@ -186,22 +185,22 @@ class analytic_account_sequence(models.Model):
         fast gaps-allowed PostgreSQL sequence is used.
         """
         values = self._add_missing_default_values(values)
-        values = super(analytic_account_sequence, self).create(values)
+        values = super(AnalyticAccountSequence, self).create(values)
         if values.implementation == 'standard':
             values._create_sequence(values.number_increment,
-                                  values.number_next)
+                                    values.number_next)
         return values
 
     @api.multi
     def unlink(self):
-        super(analytic_account_sequence, self).unlink()
+        super(AnalyticAccountSequence, self).unlink()
         self._drop_sequence()
         return True
 
     @api.multi
     def write(self, values):
         new_implementation = values.get('implementation')
-        super(analytic_account_sequence, self).write(values)
+        super(AnalyticAccountSequence, self).write(values)
         for row in self:
             # 4 cases: we test the previous impl. against the new one.
             i = values.get('number_increment', row.number_increment)
@@ -224,11 +223,13 @@ class analytic_account_sequence(models.Model):
                     row._create_sequence(i, n)
         return True
 
+    @api.model
     def _interpolate(self, s, d):
         if s:
             return s % d
-        return  ''
+        return ''
 
+    @api.model
     def _interpolation_dict(self):
         # Actually, the server is always in UTC.
         t = time.localtime()
@@ -248,40 +249,34 @@ class analytic_account_sequence(models.Model):
 
     @api.multi
     def _next(self):
-        print "\n\n\n3333333333333333333333333333333333333333", self
         if not self._ids:
             return False
         force_company = self._context.get('force_company')
         if not force_company:
             force_company = self.env['res.users'].\
                 browse(self._uid).company_id.id
-        sequences = self.read(['name', 'company_id',
-                             'implementation',
-                             'number_next',
-                             'prefix', 'suffix',
-                             'padding'])
-        preferred_sequences = [s for s in sequences if s['company_id'] and
-                               s['company_id'][0] == force_company]
-        seq = preferred_sequences[0] if preferred_sequences else sequences[0]
-        if seq['implementation'] == 'standard':
+        preferred_sequences = [s for s in self if s.company_id and
+                               s.company_id[0] == force_company]
+        seq = preferred_sequences[0] if preferred_sequences else self[0]
+        if seq.implementation == 'standard':
             self._cr.execute(
-                "SELECT nextval('analytic_account_sequence_%05d')" % seq['id'])
-            seq['number_next'] = self._cr.fetchone()
+                "SELECT nextval('analytic_account_sequence_%05d')" % seq.id)
+            seq.number_next = self._cr.fetchone()
         else:
             self._cr.execute("SELECT number_next FROM"
                              "analytic_account_sequence WHERE id=%s"
-                             "FOR UPDATE NOWAIT", (seq['id'],))
+                             "FOR UPDATE NOWAIT", (seq.id,))
             self._cr.execute(
                 "UPDATE analytic_account_sequence "
                 "SET number_next=number_next+number_increment "
-                "WHERE id=%s ", (seq['id'],))
+                "WHERE id=%s ", (seq.id,))
         d = self._interpolation_dict()
         try:
-            interpolated_prefix = self._interpolate(seq['prefix'], d)
-            interpolated_suffix = self._interpolate(seq['suffix'], d)
+            interpolated_prefix = self._interpolate(seq.prefix, d)
+            interpolated_suffix = self._interpolate(seq.suffix, d)
         except ValueError:
-            raise Warning(_('Invalid prefix or suffix '
-                           'for sequence \'%s\'') % (seq.get('name')))
+            raise Warning(_('Invalid prefix or suffix for sequence \'%s\'') %
+                          (seq.get('name')))
         return interpolated_prefix + '%%0%sd' % seq['padding'] \
                                      % seq['number_next'] + interpolated_suffix
 
