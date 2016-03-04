@@ -20,16 +20,15 @@
 ##############################################################################
 
 import time
+from openerp.tools import misc
 from datetime import datetime, date
-
 from openerp.tools.translate import _
 from openerp import api, fields, models
-from openerp.tools import misc
 
 
-class project(models.Model):
+class Project(models.Model):
     _inherit = "project.project"
-    _description = "WBS element"
+    _description = "WBS Element"
 
 #    @api.multi
 #    def _get_project_analytic_wbs(self):
@@ -146,7 +145,7 @@ class project(models.Model):
             analytic_account_name = self._context['default_parent_id']
             analytic_account_ids = \
                 self.env['account.analytic.account'].\
-                    name_search(name=analytic_account_name)
+                name_search(name=analytic_account_name)
             if len(analytic_account_ids) == 1:
                 return analytic_account_ids[0][0]
         return None
@@ -182,7 +181,7 @@ class project(models.Model):
         member_ids = []
         project_obj = self.env['project.project']
         if 'default_parent_id' in self._context and\
-            self._context['default_parent_id']:
+                self._context['default_parent_id']:
             for project in project_obj.search([]):
                 for member in project.members:
                     member_ids.append(member.id)
@@ -199,11 +198,9 @@ class project(models.Model):
 
     @api.model
     def default_get(self, fields):
-        res = super(project, self).default_get(fields)
+        res = super(Project, self).default_get(fields)
         if 'members' in fields:
-            res.update({
-                'members': self._get_parent_members(),
-            })
+            res.update({'members': self._get_parent_members()})
         return res
 
     _group_by_full = {
@@ -340,7 +337,8 @@ class project(models.Model):
             for_xml_id('project_wbs', 'open_view_wbs_tree')
         if project.parent_id:
             for parent_project in self.env['project.project'].\
-                search([('analytic_account_id', '=', project.parent_id.id)]):
+                    search([('analytic_account_id', '=',
+                             project.parent_id.id)]):
                 res['domain'] = "[('id','='," + str(parent_project.id) + ")]"
         res['nodestroy'] = False
         return res
@@ -351,7 +349,7 @@ class project(models.Model):
         view = {
             'name': _('Details'),
             'view_type': 'form',
-            'view_mode': 'form,tree,kanban,gantt',
+            'view_mode': 'form, tree, kanban, gantt',
             'res_model': 'project.project',
             'view_id': False,
             'type': 'ir.actions.act_window',
@@ -370,10 +368,9 @@ class project(models.Model):
         cr, uid, context = self.env.args
         context = dict(context)
         for p in self:
-            if values.get('state', False) and \
-                    (not values.get('stage_id', False) and not context.get(
-                        'stage_updated', False)):
-                if not context.get('change_project_stage_from_status', False):
+            if values.get('state') and (not values.get('stage_id') and not
+                                        context.get('stage_updated')):
+                if not context.get('change_project_stage_from_status'):
                     context.update({
                         'change_project_stage_from_status': True
                     })
@@ -383,4 +380,4 @@ class project(models.Model):
                         for stage in p.parent_id.child_stage_ids:
                             if stage.project_state == values.get('state'):
                                 values.update({'stage_id': stage.id})
-        return super(project, self).write(values)
+        return super(Project, self).write(values)

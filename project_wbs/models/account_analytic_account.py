@@ -95,7 +95,8 @@ class AccountAnalyticAccount(models.Model):
             deliverable = self.env['account.analytic.account'].\
                 with_context(ctx).search([('parent_id', '=',
                                            analytic_account.id),
-                          ('account_class', '=', account_class)])
+                                          ('account_class', '=',
+                                           account_class)])
             if deliverable:
                 res[analytic_account.id] = len(deliverable.ids)
             else:
@@ -147,7 +148,7 @@ class AccountAnalyticAccount(models.Model):
             analytic_account_name = self._context['default_parent_id']
             analytic_account_ids = \
                 self.env['account.analytic.account'].\
-                    name_search(name=analytic_account_name)
+                name_search(name=analytic_account_name)
             if len(analytic_account_ids) == 1:
                 return analytic_account_ids[0][0]
         return None
@@ -194,37 +195,47 @@ class AccountAnalyticAccount(models.Model):
             fold[stage.id] = stage.fold or False
         return result, fold
 
+    @api.model
+    def _get_type_common(self):
+        stage = self.env['analytic.account.stage'].search([('case_default',
+                                                            '=', 1)])
+        return stage
+
     wbs_indent = fields.Char(compute='_wbs_indent_calc', string='Level',
                              readonly=True, store=True)
     complete_wbs_code = fields.Char(compute='_complete_wbs_code_calc',
                                     string='Full WBS Code',
-        help='The full WBS code describes the full path of this component '
-             'within the project WBS hierarchy', store=True)
-#        store={'account.analytic.account': (get_child_accounts)})
+                                    help='The full WBS code describes the full'
+                                    'path of this component within the project'
+                                    'WBS hierarchy', store=True)
     complete_wbs_name = fields.Char(compute='_complete_wbs_name_calc',
                                     string='Full WBS path',
-        help='Full path in the WBS hierarchy', store=True)
-#        store={'account.analytic.account': (get_child_accounts)})
-    project_analytic_account_id = fields.Many2one('account.analytic.account',
-        compute='_get_project_account_id',
-        string='Root Project',
-        help='Root Project in the WBS hierarchy', store=True)
-#        store={'account.analytic.account': (get_child_accounts)})
+                                    help='Full path in the WBS hierarchy',
+                                    store=True)
+    project_analytic_account_id =\
+        fields.Many2one('account.analytic.account',
+                        compute='_get_project_account_id',
+                        string='Root Project',
+                        help='Root Project in the WBS hierarchy', store=True)
     account_class = fields.Selection([('project', 'Project'),
                                       ('phase', 'Phase'),
                                       ('deliverable', 'Deliverable'),
                                       ('work_package', 'Work Package')],
                                      'Class',
-        help='The classification allows you to create a proper project '
-             'Work Breakdown Structure')
+                                     help='The classification allows you to'
+                                     'create a proper project Work Breakdown'
+                                     'Structure')
     stage_id = fields.Many2one('analytic.account.stage', 'Stage',
-        domain="['&', ('fold', '=', False), "
-               "('analytic_account_ids', '=', parent_id)]")
-    child_stage_ids = fields.Many2many(
-        'analytic.account.stage', 'analytic_account_stage_rel',
-        'analytic_account_id', 'stage_id', 'Child Stages', states={
-            'close': [('readonly', True)], 'cancelled': [('readonly',
-                                                          True)]})
+                               domain="['&', ('fold', '=', False), "
+                               "('analytic_account_ids', '=', parent_id)]")
+    child_stage_ids = fields.Many2many('analytic.account.stage',
+                                       'analytic_account_stage_rel',
+                                       'analytic_account_id', 'stage_id',
+                                       'Child Stages',
+                                       default=_get_type_common,
+                                       states={'close': [('readonly', True)],
+                                               'cancelled': [('readonly',
+                                                              True)]})
     child_project_count = fields.Integer("Projects",
                                          compute='_child_project_count',
                                          store=True)
@@ -239,18 +250,8 @@ class AccountAnalyticAccount(models.Model):
         Integer("Unclassified projects", compute='_child_unclassified_count',
                 store=True)
 
-    @api.model
-    def _get_type_common(self):
-        stage = self.env['analytic.account.stage'].search([('case_default',
-                                                            '=', 1)])
-        return stage
-
     _group_by_full = {
         'stage_id': _read_group_stage_ids,
-    }
-
-    _defaults = {
-        'child_stage_ids': _get_type_common,
     }
 
     _order = 'complete_wbs_code'
