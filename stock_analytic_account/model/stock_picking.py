@@ -18,8 +18,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
-from openerp import api, fields, models
+from openerp import fields, models
 
 
 class StockPicking(models.Model):
@@ -31,26 +30,4 @@ class StockPicking(models.Model):
                         related='move_lines.analytic_account_id')
     analytic_account_user_ids =\
         fields.Many2one('res.users', 'Project Manager', readonly=True,
-                         related='move_lines.analytic_account_user_id')
-
-
-#class StockPickingIn(models.Model):
-#    _inherit = "stock.picking.in"
-#
-#    def __init__(self, pool, cr):
-#        super(StockPickingIn, self).__init__(pool, cr)
-#        self._columns['analytic_account_ids'] = \
-#            self.pool['stock.picking']._columns['analytic_account_ids']
-#        self._columns['analytic_account_user_ids'] = \
-#            self.pool['stock.picking']._columns['analytic_account_user_ids']
-#
-#
-#class StockPickingOut(models.Model):
-#    _inherit = "stock.picking.out"
-#
-#    def __init__(self, pool, cr):
-#        super(StockPickingOut, self).__init__(pool, cr)
-#        self._columns['analytic_account_ids'] = \
-#            self.pool['stock.picking']._columns['analytic_account_ids']
-#        self._columns['analytic_account_user_ids'] = \
-#            self.pool['stock.picking']._columns['analytic_account_user_ids']
+                        related='move_lines.analytic_account_user_id')

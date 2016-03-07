@@ -18,63 +18,59 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
-from openerp.osv import fields, osv, orm
-from openerp.tools.translate import _
 from openerp import tools
+from openerp import api, fields, models, _
+from openerp.exceptions import Warning
 
 
-class stock_change_product_qty(orm.TransientModel):
+class StockChangeProductQty(models.TransientModel):
     _inherit = "stock.change.product.qty"
 
-    _columns = {
-        'analytic_account_id': fields.many2one(
-            'account.analytic.account', 'Analytic Account'),
-    }
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account')
 
-    def change_product_qty(self, cr, uid, ids, context=None):
-        """ Changes the Product Quantity by making a Physical Inventory.
-        @param self: The object pointer.
-        @param cr: A database cursor
-        @param uid: ID of the user currently logged in
-        @param ids: List of IDs selected
-        @param context: A standard dictionary
-        @return:
-        """
-        if context is None:
-            context = {}
-
-        rec_id = context and context.get('active_id', False)
-        assert rec_id, _('Active ID is not set in Context')
-
-        inventry_obj = self.pool.get('stock.inventory')
-        inventry_line_obj = self.pool.get('stock.inventory.line')
-        prod_obj_pool = self.pool.get('product.product')
-
-        res_original = prod_obj_pool.browse(cr, uid, rec_id, context=context)
-        for data in self.browse(cr, uid, ids, context=context):
+    @api.multi
+    def change_product_qty(self):
+        """Override to pass the analytic account to inventory."""
+        inventory_obj = self.env['stock.inventory']
+        inventory_line_obj = self.env['stock.inventory.line']
+        for data in self:
             if data.new_quantity < 0:
-                raise osv.except_osv(_('Warning!'),
-                                     _('Quantity cannot be negative.'))
-            inventory_id = inventry_obj.create(
-                cr, uid,
-                {'name': _('INV: %s') % tools.ustr(res_original.name)},
-                context=context)
+                raise Warning(_('Quantity cannot be negative.'))
+            if data.product_id.id and data.lot_id.id:
+                filters = 'none'
+            elif data.product_id.id:
+                filters = 'product'
+            else:
+                filters = 'none'
+            loc_id = data.location_id.id
+            lot_id = data.lot_id.id
+            inventory = inventory_obj.create({
+                'name': _('INV: %s') % tools.ustr(data.product_id.name),
+                'filter': filters,
+                'product_id': data.product_id.id,
+                'location_id': loc_id,
+                'lot_id': lot_id,
+            })
+            product = data.product_id.with_context(location=loc_id,
+                                                   lot_id=lot_id)
+            th_qty = product.qty_available
             line_data = {
-                'inventory_id': inventory_id,
+                'inventory_id': inventory.id,
                 'product_qty': data.new_quantity,
                 'location_id': data.location_id.id,
-                'product_id': rec_id,
-                'product_uom': res_original.uom_id.id,
-                'lot_id': data.lot_id.id,
+                'product_id': data.product_id.id,
+                'product_uom_id': data.product_id.uom_id.id,
+                'theoretical_qty': th_qty,
+                'prod_lot_id': data.lot_id.id,
+                # START OF stock_analytic_account
                 'analytic_account_id': data.analytic_account_id.id,
             }
-            inventry_line_obj.create(cr, uid, line_data, context=context)
-#            inventry_obj.action_confirm(cr, uid, [inventory_id],
-#                                        context=context)
-            context.update({
+            context = ({
                 'analytic_account_id': data.analytic_account_id.id,
                 'analytic_reserved': True,
             })
-            inventry_obj.action_done(cr, uid, [inventory_id], context=context)
+            # END OF stock_analytic_account
+            inventory_line_obj.with_context(context).create(line_data)
+            inventory.with_context(context).action_done()
         return {}

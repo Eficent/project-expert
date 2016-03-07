@@ -19,18 +19,18 @@
 #
 ##############################################################################
 from openerp import api, fields, models
-import openerp.addons.decimal_precision as dp
 
 
 class AccountAnalyticAccount(models.Model):
     _inherit = "account.analytic.account"
 
     move_ids = fields.One2many('stock.move', 'analytic_account_id',
-                                'Moves for this analytic account',
-                                readonly=True)
+                               'Moves for this analytic account',
+                               readonly=True)
     use_reserved_stock = fields.Boolean('Use reserved stock',
-        help="Stock with reference to this analytic account "
-             "is considered to be reserved.")
+                                        help="Stock with reference to this "
+                                        "analytic account is considered to be "
+                                        "reserved.")
 
     @api.one
     def copy(self, default=None):

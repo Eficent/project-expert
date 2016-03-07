@@ -3,6 +3,7 @@
 #
 #    Copyright (C) 2014 Eficent (<http://www.eficent.com/>)
 #              Jordi Ballester Alomar <jordi.ballester@eficent.com>
+#    Copyright (C) 2015 Serpent Consulting Services Pvt. Ltd.
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -18,12 +19,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
-
 {
     "name": "Stock Analytic Account",
-    "version": "1.0",
-    "author": "Eficent",
+    "version": "8.0.1.0.0",
+    "author": "Eficent Business and IT Consulting Services S.L., "
+              "Serpent Consulting Services Pvt. Ltd.,"
+              "Odoo Community Association (OCA)",
     "website": "www.eficent.com",
     'summary': 'Adds the analytic account to stock moves',
     "depends": ["stock", "analytic"],
@@ -32,9 +33,12 @@ Project Procurement
 ===================
 Features of this module:
     - Adds the analytic account to the stock move
-    - Makes it possible to search stock moves by analytic account or its project manager
-    - Makes it possible to search picking lists by analytic account or its project manager
-    - Adds button in the Project Form and an Action from Project's 'More' menu to list the
+    - Makes it possible to search stock moves by analytic account or its
+        project manager
+    - Makes it possible to search picking lists by analytic account or its
+        project manager
+    - Adds button in the Project Form and an Action from Project's 'More' menu
+        to list the
     Procurement Orders associated to the selected project.
     """,
     'data': [
@@ -46,7 +50,7 @@ Features of this module:
         'wizard/stock_change_product_qty_view.xml',
 #        'wizard/stock_fill_inventory_view.xml',
     ],
-    'test':[
+    'test': [
         'test/stock_users.yml',
         'demo/stock_demo.yml',
         'test/opening_stock.yml',

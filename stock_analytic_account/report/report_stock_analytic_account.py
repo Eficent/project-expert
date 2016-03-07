@@ -19,92 +19,98 @@
 #
 ##############################################################################
 
-from openerp.osv import fields, osv, orm
-from openerp.tools.translate import _
-from openerp.tools.sql import drop_view_if_exists
+from openerp import tools
+from openerp import api, exceptions, fields, models, _
 
 
-class stock_report_analytic_account(orm.Model):
+class StockReportAnalyticAccount(models.Model):
     _name = "stock.report.analytic.account"
-    _description = "Stock report by analytic account"
+    _description = "Stock report by Analytic Account"
     _auto = False
-    _columns = {
-        'qty': fields.float(
-            'Quantity in ref UoM',
-            help="Quantity expressed in the reference UoM",
-            readonly=True),
-        'location_id': fields.many2one('stock.location', 'Location',
-                                       readonly=True, select=True),
-        'usage': fields.selection([('supplier', 'Supplier Location'),
-                                   ('view', 'View'),
-                                   ('internal', 'Internal Location'),
-                                   ('customer', 'Customer Location'),
-                                   ('inventory', 'Inventory'),
-                                   ('procurement', 'Procurement'),
-                                   ('production', 'Production'),
-                                   ('transit', 'Transit Location for '
-                                               'Inter-Companies Transfers')],
-                                  'Location Type', readonly=True),
-        'product_id': fields.many2one('product.product', 'Product',
-                                      readonly=True, select=True),
-        'analytic_account_id': fields.many2one('account.analytic.account',
-                                               'Analytic Account',
-                                               readonly=True, select=True),
-        'analytic_reserved': fields.boolean('Stock reserved for the '
-                                            'Analytic Account',
-                                            readonly=True, select=True),
-    }
+    qty = fields.Float('Quantity in ref UoM', help="Quantity expressed in the "
+                       "reference UoM", readonly=True)
+    location_id = fields.Many2one('stock.location', 'Location', readonly=True,
+                                  select=True)
+    usage = fields.Selection([('supplier', 'Supplier Location'),
+                              ('view', 'View'),
+                              ('internal', 'Internal Location'),
+                              ('customer', 'Customer Location'),
+                              ('inventory', 'Inventory'),
+                              ('procurement', 'Procurement'),
+                              ('production', 'Production'),
+                              ('transit', 'Transit Location for '
+                               'Inter-Companies Transfers')],
+                             'Location Type', readonly=True)
+    product_id = fields.Many2one('product.product', 'Product', readonly=True,
+                                 select=True)
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account', readonly=True,
+                                          select=True)
+    analytic_reserved = fields.Boolean('Stock reserved for the '
+                                       'Analytic Account', readonly=True,
+                                       select=True)
 
     def init(self, cr):
-        drop_view_if_exists(cr, 'stock_report_analytic_account')
-        cr.execute("""
-            create or replace view stock_report_analytic_account as (
-                select max(id) as id,
+        tools.sql.drop_view_if_exists(cr, self._table)
+        cr.execute("""CREATE or REPLACE VIEW %s as (
+                %s
+                %s
+                %s
+                %s
+        )""" % (self._table, self._select(), self._from(), self._where(),
+                self._group_by()))
+
+    def _select(self):
+        return """SELECT MAX(id) AS id,
                     location_id,
                     usage,
                     product_id,
                     analytic_account_id,
                     analytic_reserved,
-                    sum(qty) as qty
-                from (
-                    select -max(sm.id) as id,
-                        sm.location_id,
-                        sl.usage,
-                        sm.product_id,
-                        sm.analytic_account_id,
-                        sm.analytic_reserved,
-                        -sum(sm.product_qty /uo.factor) as qty
-                    from stock_move as sm
-                    left join stock_location sl
-                        on (sl.id = sm.location_id)
-                    left join product_uom uo
-                        on (uo.id=sm.product_uom)
-                    where state = 'done'
-                    group by sm.location_id, sl.usage, sm.product_id,
-                    sm.product_uom,
+                    SUM(qty) AS qty"""
+
+    def _from(self):
+        return """FROM (
+                SELECT -MAX(sm.id) AS id,
+                    sm.location_id,
+                    sl.usage,
+                    sm.product_id,
                     sm.analytic_account_id,
-                    sm.analytic_reserved
-                    union all
-                    select max(sm.id) as id,
-                        sm.location_dest_id as location_id,
-                        sl.usage,
-                        sm.product_id,
-                        sm.analytic_account_id,
-                        sm.analytic_reserved,
-                        sum(sm.product_qty /uo.factor) as qty
-                    from stock_move as sm
-                    left join stock_location sl
-                        on (sl.id = sm.location_dest_id)
-                    left join product_uom uo
-                        on (uo.id=sm.product_uom)
-                    where sm.state = 'done'
-                    group by sm.location_dest_id, sl.usage, sm.product_id,
+                    sm.analytic_reserved,
+                    -SUM(sm.product_qty /uo.factor) AS qty
+                FROM stock_move AS sm
+                    LEFT JOIN stock_location sl ON (sl.id = sm.location_id)
+                    LEFT JOIN product_uom uo ON (uo.id=sm.product_uom)
+                WHERE state = 'done'
+                GROUP BY sm.location_id, sl.usage, sm.product_id,
+                sm.product_uom,
+                sm.analytic_account_id,
+                sm.analytic_reserved
+            UNION ALL
+                SELECT MAX(sm.id) AS id,
+                    sm.location_dest_id AS location_id,
+                    sl.usage,
+                    sm.product_id,
+                    sm.analytic_account_id,
+                    sm.analytic_reserved,
+                    SUM(sm.product_qty /uo.factor) AS qty
+                FROM stock_move AS sm
+                LEFT JOIN stock_location sl ON (sl.id = sm.location_dest_id)
+                LEFT JOIN product_uom uo ON (uo.id=sm.product_uom)
+                WHERE sm.state = 'done'
+                GROUP BY sm.location_dest_id, sl.usage, sm.product_id,
                     sm.product_uom, sm.analytic_account_id,
                     sm.analytic_reserved
-                ) as report
-                group by location_id, usage, product_id,
-                analytic_account_id, analytic_reserved
-            )""")
+            ) AS report"""
 
-    def unlink(self, cr, uid, ids, context=None):
-        raise osv.except_osv(_('Error!'), _('You cannot delete any record!'))
+    def _where(self):
+        return """ """
+
+    def _group_by(self):
+        return """GROUP BY location_id, usage, product_id,
+                analytic_account_id, analytic_reserved"""
+
+    @api.multi
+    def unlink(self):
+        raise exceptions.except_orm(_('Error!'),
+                                    _('You cannot delete any record!'))
