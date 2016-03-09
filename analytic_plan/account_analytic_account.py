@@ -1,99 +1,80 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    Copyright (C) 2014 Eficent (<http://www.eficent.com/>)
-#              <contact@eficent.com>
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
-import decimal_precision as dp
-from openerp.osv import fields, orm
+# © 2015 Eficent Business and IT Consulting Services S.L. -
+# Jordi Ballester Alomar
+# © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+import openerp.addons.decimal_precision as dp
+from openerp import api, fields, models
 
 
-class account_analytic_account(orm.Model):
-    
+class AccountAnalyticAccount(models.Model):
+
     _inherit = 'account.analytic.account'
 
-    def _get_active_analytic_planning_version(self, cr, uid, ids,
-                                              context=None):
-
-        plan_versions = self.pool.get('account.analytic.plan.version').search(
-            cr, uid, [('default_plan', '=', True)], context=None),
+    @api.multi
+    def _get_active_analytic_planning_version(self):
+        plan_versions = self.env['account.analytic.plan.version'].search([('default_plan', '=', True)])
         for plan_version in plan_versions:
             if plan_version:
-                return plan_version[0]
+                return plan_version
         return False
 
-    def _compute_level_tree_plan(self, cr, uid, ids, child_ids, res,
-                                 field_names, context=None):
-        currency_obj = self.pool.get('res.currency')
+    @api.model
+    def _compute_level_tree_plan(self, child_ids):
+        currency_obj = self.env['res.currency']
         recres = {}
 
-        def recursive_computation(account):
-            result2 = res[account.id].copy()
+        @api.model
+        def recursive_computation(self):
+            result2 = account.copy()
             for son in account.child_ids:
-                result = recursive_computation(son)
-                print "\n\n field ==================================", field_names
+                result = son.recursive_computation()
                 for field in field_names:
-                    print "\n\n field ==================================", field
                     if (account.currency_id.id != son.currency_id.id) \
-                            and (field != 'quantity_plan'):
-                        result[field] = currency_obj.compute(
-                            cr, uid, son.currency_id.id,
-                            account.currency_id.id, result[field],
-                            context=context)
+                            and not account.quantity_plan:
+                        result[field] = currency_obj.compute(son.currency_id.id,
+                            account.currency_id.id, result[field])
                     result2[field] += result[field]
             return result2
-        for account in self.browse(cr, uid, ids, context=context):
+        for account in self.browse(self._ids):
             if account.id not in child_ids:
                 continue
-            recres[account.id] = recursive_computation(account)
+            recres[account.id] = account.recursive_computation()
         return recres
 
-    def _debit_credit_bal_qtty_plan(self, cr, uid, ids, fields, arg,
-                                    context=None):
-        print "_debit_credit_bal_qtty_plan ####################################", self
+    @api.model
+    @api.depends('balance_plan', 'debit_plan', 'credit_plan', 'quantity_plan')
+    def _debit_credit_bal_qtty_plan(self):
         res = {}
-        if context is None:
-            context = {}
-        child_ids = tuple(self.search(cr, uid,
-                                      [('parent_id', 'child_of', ids)]))
-        print "\n\n_child_ids ####################################", child_ids
-        for i in child_ids:
-            res[i] = {}
-            for n in fields:
-                res[i][n] = 0.0
-        print "\n\nres ####################################", res
+        child_ids = []
+        child = self.search([('parent_id', 'child_of', self._ids)])
+        for child_id in child:
+            child_ids.append(child_id.id)
+        child_ids = tuple(child_ids)
+#        for i in child_ids:
+#            res[i] = {}
+#            for n in fields:
+#                res[i][n] = 0.0
         if not child_ids:
             return res
-
-        for ac_id in child_ids:
-            res[ac_id] = {'debit_plan': 0, 
-                          'credit_plan': 0, 
-                          'balance_plan': 0, 
-                          'quantity_plan': 0}
-        print "\n\nres 222222222222222222222222222222222222", res
+#        for ac_id in child_ids:
+#            res[ac_id] = {'debit_plan': 0,
+#                          'credit_plan': 0,
+#                          'balance_plan': 0,
+#                          'quantity_plan': 0}
+        child.write({'debit_plan': 0,
+                      'credit_plan': 0,
+                      'balance_plan': 0,
+                      'quantity_plan': 0})
         where_date = ''
-        where_clause_args = [tuple(child_ids)]
-        if context.get('from_date', False):
+        where_clause_args = [child_ids]
+        if self._context.get('from_date', False):
             where_date += " AND l.date >= %s"
-            where_clause_args += [context['from_date']]
-        if context.get('to_date', False):
+            where_clause_args += [self._context['from_date']]
+        if self._context.get('to_date', False):
             where_date += " AND l.date <= %s"
-            where_clause_args += [context['to_date']]
-        cr.execute("""
+            where_clause_args += [self._context['to_date']]
+        self._cr.execute("""
               SELECT a.id,
                      sum(
                          CASE WHEN l.amount > 0
@@ -114,77 +95,58 @@ class account_analytic_account(orm.Model):
                   (a.id = l.account_id)
               WHERE a.id IN %s
               AND a.active_analytic_planning_version = l.version_id
-              """ + where_date + """             
+              """ + where_date + """
               GROUP BY a.id""", where_clause_args)
-        
-        for row in cr.dictfetchall():
+        for row in self._cr.dictfetchall():
             res[row['id']] = {}
             for field in fields:
                 res[row['id']][field] = row[field]
-        return self._compute_level_tree_plan(cr, uid, ids, child_ids, res,
-                                             fields, context)
+        return self._compute_level_tree_plan(child_ids)
 
-    _columns = {   
+    balance_plan = fields.Float(
+        compute='_debit_credit_bal_qtty_plan', method=True,
+        string='Planned Balance', multi='debit_credit_bal_qtty_plan',
+        digits_compute=dp.get_precision('Account'))
+    debit_plan = fields.Float(
+        compute='_debit_credit_bal_qtty_plan', method=True,
+        string='Planned Debit', multi='debit_credit_bal_qtty_plan',
+        digits_compute=dp.get_precision('Account'))
+    credit_plan = fields.Float(
+        compute='_debit_credit_bal_qtty_plan', method=True,
+        string='Planned Credit', multi='debit_credit_bal_qtty_plan',
+        digits_compute=dp.get_precision('Account'))
+    quantity_plan = fields.Float(
+        compute='_debit_credit_bal_qtty_plan', method=True,
+        string='Quantity Debit', multi='debit_credit_bal_qtty_plan',
+        digits_compute=dp.get_precision('Account'))
+    plan_line_ids = fields.One2many('account.analytic.line.plan',
+                                     'account_id',
+                                     'Analytic Entries')
+    active_analytic_planning_version = fields.\
+        Many2one('account.analytic.plan.version', 'Active planning Version',
+                 required=True, default=_get_active_analytic_planning_version)
 
-        'balance_plan': fields.function(
-            _debit_credit_bal_qtty_plan, method=True, type='float',
-            string='Planned Balance', multi='debit_credit_bal_qtty_plan',
-            digits_compute=dp.get_precision('Account')),
-        'debit_plan': fields.function(
-            _debit_credit_bal_qtty_plan, method=True, type='float',
-            string='Planned Debit', multi='debit_credit_bal_qtty_plan',
-            digits_compute=dp.get_precision('Account')),
-        'credit_plan': fields.function(
-            _debit_credit_bal_qtty_plan, method=True, type='float',
-            string='Planned Credit', multi='debit_credit_bal_qtty_plan',
-            digits_compute=dp.get_precision('Account')),
-        'quantity_plan': fields.function(
-            _debit_credit_bal_qtty_plan, method=True, type='float',
-            string='Quantity Debit', multi='debit_credit_bal_qtty_plan',
-            digits_compute=dp.get_precision('Account')),
-        'plan_line_ids': fields.one2many('account.analytic.line.plan',
-                                         'account_id',
-                                         'Analytic Entries'),
-
-        'active_analytic_planning_version': fields.many2one(
-            'account.analytic.plan.version', 'Active planning Version',
-            required=True),
-    }
-
-    _defaults = {
-        'active_analytic_planning_version':
-            _get_active_analytic_planning_version
-    }
-
-    def copy(self, cr, uid, id, default=None, context=None):
+    @api.one
+    def copy(self, default=None):
         if default is None:
-            default = {}        
-        default['plan_line_ids'] = []        
-        return super(account_analytic_account, self).copy(cr, uid, id,
-                                                          default,
-                                                          context=context)
+            default = {}
+        default['plan_line_ids'] = []
+        return super(AccountAnalyticAccount, self).copy(default)
 
-    def action_openPlanCostTreeView(self, cr, uid, ids, context=None):
+    @api.multi
+    def action_openPlanCostTreeView(self):
         """
         :return dict: dictionary value for created view
         """
-        if context is None:
-            context = {}
-        account = self.browse(cr, uid, ids[0], context)
-        res = self.pool.get('ir.actions.act_window').for_xml_id(
-            cr, uid, 'analytic_plan',
-            'action_account_analytic_plan_journal_open_form', context)
-        plan_obj = self.pool['account.analytic.line.plan']
-
-        acc_ids = self.get_child_accounts(cr, uid, [account.id],
-                                          context=context)
-        line_ids = plan_obj.search(
-            cr, uid, [('account_id', 'in', acc_ids.keys()),
+        account = self[0]
+        res = self.env['ir.actions.act_window'].for_xml_id('analytic_plan',
+            'action_account_analytic_plan_journal_open_form')
+        plan_obj = self.env['account.analytic.line.plan']
+        acc_ids = account.get_child_accounts()
+        line = plan_obj.search([('account_id', 'in', acc_ids.keys()),
                       ('version_id', '=',
-                       account.active_analytic_planning_version.id)],
-            context=context)
-
+                       account.active_analytic_planning_version.id)])
         res['domain'] = "[('id', 'in', ["+','.join(
-            map(str, line_ids))+"])]"
+            map(str, line.ids))+"])]"
         res['nodestroy'] = False
         return res

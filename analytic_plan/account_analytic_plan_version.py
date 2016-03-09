@@ -1,94 +1,60 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    Copyright (C) 2014 Eficent (<http://www.eficent.com/>)
-#              <contact@eficent.com>
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
+# © 2015 Eficent Business and IT Consulting Services S.L. -
+# Jordi Ballester Alomar
+# © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 from openerp.tools.translate import _
-from openerp.osv import fields, orm
+from openerp import api, fields, models
 
 
-class account_analytic_plan_version(orm.Model):
+class AccountAnalyticPlanVersion(models.Model):
     _name = 'account.analytic.plan.version'
     _description = 'Analytic Planning Version'
-    _columns = {
-        'name': fields.char('Planning Version Name', size=64, required=True),
-        'code': fields.char('Planning Version Code', size=8),
-        'active': fields.boolean('Active',
-                                 help='If the active '
-                                      'field is set to False, '
-                                      'it will allow you to hide '
-                                      'the analytic planning version '
-                                      'without removing it.'),
-        'notes': fields.text('Notes'),
-        'company_id': fields.many2one('res.company', 'Company', required=True),
-        'default_committed': fields.boolean("""Default version
-         for committed costs"""),
-        'default_plan': fields.boolean('Default planning version'),
-    }
 
-    def _check_default_committed(self, cr, uid, vals, context=None):
+    name = fields.Char('Planning Version Name', required=True)
+    code = fields.Char('Planning Version Code')
+    active = fields.Boolean('Active',
+                             help='If the active '
+                                  'field is set to False, '
+                                  'it will allow you to hide '
+                                  'the analytic planning version '
+                                  'without removing it.', default=True)
+    notes = fields.Text('Notes')
+    company_id = fields.Many2one('res.company', 'Company', required=True,
+                                 default=lambda self: self.env['res.users'].\
+                                 browse(self._uid).company_id.id)
+    default_committed = fields.Boolean('Default version for committed costs',
+                                       default=False)
+    default_plan = fields.Boolean('Default planning version', default=False)
 
+    @api.model
+    def _check_default_committed(self, vals):
         if 'default_committed' in vals:
             if vals['default_committed'] is True:
-                other_default_committed = self.search(
-                    cr, uid, [('default_committed', '=', True)], 
-                    context=context)
+                other_default_committed = self.search([('default_committed',
+                                                        '=', True)])
                 if other_default_committed:
-                    raise orm.except_orm(_('Error!'),
-                                         _('Only one default commitments '
-                                           'version can exist.'))
+                    raise Warning(_('Only one default commitments version can'
+                                    'exist.'))
 
-    def _check_default_plan(self, cr, uid, vals, context=None):
-
+    @api.model
+    def _check_default_plan(self, vals):
         if 'default_plan' in vals:
             if vals['default_plan'] is True:
-                other_default_plan = self.search(
-                    cr, uid, [('default_plan', '=', True)], context=context)
+                other_default_plan = self.search([('default_plan', '=', True)])
                 if other_default_plan:
-                    raise orm.except_orm(_('Error!'),
-                                         _('Only one default planning version '
-                                           'can exist.'))
+                    raise Warning(_('Only one default planning version can'
+                                    'exist.'))
 
-    _defaults = {
-        'active': True,
-        'company_id': lambda self, cr, uid,
-        c: self.pool.get('res.users').browse(cr, uid, uid, c).company_id.id,
-        'default_committed': False,
-        'default_plan': False,
-    }
-
-    def create(self, cr, uid, vals, *args, **kwargs):
-
-        context = kwargs.get('context', {})
-        self._check_default_committed(cr, uid, vals, context)
-        self._check_default_plan(cr, uid, vals, context)
-
-        res = super(account_analytic_plan_version, self).create(
-            cr, uid, vals, *args, **kwargs)
-
+    @api.model
+    def create(self, vals):
+        self._check_default_committed(vals)
+        self._check_default_plan(vals)
+        res = super(AccountAnalyticPlanVersion, self).create(vals)
         return res
 
-    def write(self, cr, uid, ids, vals, context=None):
-        if context is None:
-            context = {}
-
-        self._check_default_committed(cr, uid, vals, context)
-        self._check_default_plan(cr, uid, vals, context)
-
-        return super(account_analytic_plan_version, self).write(
-            cr, uid, ids, vals, context=context)
+    @api.multi
+    def write(self, vals):
+        self._check_default_committed(vals)
+        self._check_default_plan(vals)
+        return super(AccountAnalyticPlanVersion, self).write(vals)

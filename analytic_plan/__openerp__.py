@@ -1,31 +1,17 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    Copyright (C) 2014 Eficent (<http://www.eficent.com/>)
-#              <contact@eficent.com>
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
+# © 2015 Eficent Business and IT Consulting Services S.L. -
+# Jordi Ballester Alomar
+# © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 {
     "name": "Analytic Plan",
-    "version": "1.0",
-    "author": "Eficent",
+    "version": "8.0.1.0.0.",
+    "author": "Eficent Business and IT Consulting Services S.L., "
+              "Serpent Consulting Services Pvt. Ltd.,",
     "website": "www.eficent.com",
     "category": "Generic Modules/Projects & Services",
-    "depends": ["account", "analytic", "project", "project_wbs"],
+    "depends": ["project_wbs"],
     "description": """
 Analytic Plan
 ====================================
@@ -80,8 +66,7 @@ More information and assistance:
     us at www.eficent.com or conact us at contact@eficent.com.
 
     """,
-    "init_xml": [],
-    "update_xml": [
+    "data": [
         "account_analytic_plan_version_view.xml",
         "account_analytic_plan_version_data.xml",
         "account_analytic_plan_journal_view.xml",
@@ -91,11 +76,6 @@ More information and assistance:
         "account_analytic_plan_journal_data.xml",
         "project_view.xml",
         "wizard/analytic_plan_copy_version.xml",
-    ],
-    'demo_xml': [
-
-    ],
-    'test':[
     ],
     'installable': True,
     'active': False,
