@@ -13,6 +13,29 @@ class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
 
     @api.multi
+    def get_child_accounts(self):
+        result = {}
+        for curr_id in self._ids:
+            result[curr_id] = True
+        # Now add the children
+        self._cr.execute('''
+        WITH RECURSIVE children AS (
+        SELECT parent_id, id
+        FROM account_analytic_account
+        WHERE parent_id IN %s
+        UNION ALL
+        SELECT a.parent_id, a.id
+        FROM account_analytic_account a
+        JOIN children b ON(a.parent_id = b.id)
+        )
+        SELECT * FROM children order by parent_id
+        ''', (tuple(self._ids),))
+        res = self._cr.fetchall()
+        for x, y in res:
+            result[y] = True
+        return result
+
+    @api.multi
     @api.depends('complete_wbs_code', 'code', 'name', 'parent_id')
     def _complete_wbs_code_calc(self):
         if not self._ids:
@@ -182,9 +205,8 @@ class AccountAnalyticAccount(models.Model):
 
     @api.model
     def _get_type_common(self):
-        stage = self.env['analytic.account.stage'].search([('case_default',
+        return self.env['analytic.account.stage'].search([('case_default',
                                                             '=', 1)])
-        return stage
 
     wbs_indent = fields.Char(compute='_wbs_indent_calc', string='Level',
                              readonly=True, store=True)
