@@ -25,12 +25,12 @@
                         </div>
                         <group>
                             <group colspan="3" col="4">
-                                <field name="account_id" on_change="on_change_account_id(account_id)"/>
+                                <field name="account_id"/>
                                 <field name="name"/>
                                 <field name="date"/>
                             </group>
                             <group colspan="2" col="4" string="Product Information">
-                                <field name="product_id" on_change="on_change_product_id(product_id)"/>
+                                <field name="product_id"/>
                                 <field name="unit_amount"/>
                                 <field name="product_uom_id"/>
                             </group>
@@ -62,10 +62,10 @@
             <field name="arch" type="xml">
 				<tree string="Analytic resource plan line" editable="top"
                       colors = "darkmagenta:has_child == True;blue:state=='draft'">
-                    <field name="account_id" on_change="on_change_account_id(account_id)"/>
+                    <field name="account_id"/>
                     <field name="date"/>
                     <field name="name" invisible="True"/>
-	                <field name="product_id" on_change="on_change_product_id(product_id)"/>
+	                <field name="product_id"/>
                     <field name="name"/>
 					<field name="unit_amount"/>
                     <field name="product_uom_id"/>
