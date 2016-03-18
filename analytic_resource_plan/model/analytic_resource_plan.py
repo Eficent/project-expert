@@ -19,7 +19,7 @@ class AnalyticResourcePlanLine(models.Model):
         for line in self:
             line.has_child = False
             if line.child_ids:
-                line.has_child = False
+                line.has_child = True
 
     account_id = fields.Many2one('account.analytic.account',
                                   'Analytic Account', required=True,
@@ -52,7 +52,7 @@ class AnalyticResourcePlanLine(models.Model):
                                 states={'draft': [('readonly', False)]},
                                 help='Specifies the quantity that has '
                                      'been planned.')
-    notes = fields.text('Notes')
+    notes = fields.Text('Notes')
     parent_id = fields.Many2one('analytic.resource.plan.line',
                                  'Parent',
                                  readonly=True,
@@ -83,11 +83,8 @@ class AnalyticResourcePlanLine(models.Model):
     @api.model
     def _prepare_analytic_lines(self):
         plan_version_obj = self.env['account.analytic.plan.version']
-        res = {}
-        res['value'] = {}
         journal_id = self.product_id.expense_analytic_plan_journal_id \
             and self.product_id.expense_analytic_plan_journal_id.id or False
-
         general_account_id = self.product_id.product_tmpl_id.\
             property_account_expense.id
         if not general_account_id:
@@ -98,7 +95,8 @@ class AnalyticResourcePlanLine(models.Model):
                                    'for this product: "%s" (id:%d)')
                                  % (self.product_id.name,
                                     self.product_id.id,))
-        default_plan = plan_version_obj.search([('default_resource_plan', '=', True)],
+        default_plan = plan_version_obj.search([('default_resource_plan', '=',
+                                                 True)],
             limit=1)
 
         if not default_plan:
@@ -160,22 +158,21 @@ class AnalyticResourcePlanLine(models.Model):
     def on_change_product_id(self):
         if self.product_id:
             self.name = self.product_id.name
-            self.product_uom_id = self.product_id.uom_id and self.product_id.uom_id.id or False
-        return {}
+            self.product_uom_id = self.product_id.uom_id and\
+            self.product_id.uom_id.id or False
 
     @api.onchange('account_id')
     def on_change_account_id(self):
         if self.account_id:
             if self.account_id.date:
                 self.date = self.account_id.date
-        return {}
 
     @api.multi
     def write(self, vals):
         analytic_obj = self.env['account.analytic.account']
         if 'account_id' in vals:
             analytic = analytic_obj.browse(vals['account_id'])
-            if not vals.get('date', False):
+            if vals.get('date', False):
                 vals['date'] = analytic.date
         return super(AnalyticResourcePlanLine, self).write(vals)
 

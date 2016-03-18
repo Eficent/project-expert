@@ -10,7 +10,8 @@ from openerp import api, fields, models
 class AccountAnalyticPlanVersion(models.Model):
     _inherit = 'account.analytic.plan.version'
 
-    default_resource_plan = fields.Boolean('Default for resource plan')
+    default_resource_plan = fields.Boolean('Default for resource plan',
+                                           default=False)
 
     @api.model
     def _check_default_resource(self, vals):
@@ -21,10 +22,6 @@ class AccountAnalyticPlanVersion(models.Model):
                 if other_default_resource:
                     raise Warning(_('Only one default for resource '
                                     'plan version can exist.'))
-
-    _defaults = {
-        'default_resource_plan': False,
-    }
 
     @api.model
     def create(self, vals):

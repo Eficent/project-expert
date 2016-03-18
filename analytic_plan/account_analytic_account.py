@@ -14,47 +14,86 @@ class AccountAnalyticAccount(models.Model):
     @api.multi
     def _get_active_analytic_planning_version(self):
         plan_versions = self.env['account.analytic.plan.version'].search([('default_plan', '=', True)])
+        print "plan_versions ##############################", plan_versions
         for plan_version in plan_versions:
             if plan_version:
                 return plan_version
         return False
 
-    @api.model
-    def _compute_level_tree_plan(self, child_ids):
+    @api.multi
+    def _compute_level_tree_plan(self, child_ids, res):
         currency_obj = self.env['res.currency']
         recres = {}
+        field_names = ['debit_plan', 'credit_plan', 'balance_plan', 'quantity_plan']
 
-        @api.model
-        def recursive_computation(self):
-            result2 = account.copy()
+#        def recursive_computation(account):
+##            result2 = res[account.id].copy()
+#            for son in child_ids:
+#                result = recursive_computation(son)
+#                print "$$$$$$$$$result    ", result
+#                for field in field_names:
+#                    if (account.currency_id.id != son.currency_id.id) \
+#                            and (field != 'quantity_plan'):
+#                        result[field] = son.currency_id.compute(account.currency_id.id, result[field])
+#                    print "22222222222", field, result[field]
+#                    account.debit_plan += result[field]
+#            return account
+
+        def recursive_computation(account):
+            result2 = res[account.id].copy()
             for son in account.child_ids:
-                result = son.recursive_computation()
+                result = recursive_computation(son)
                 for field in field_names:
                     if (account.currency_id.id != son.currency_id.id) \
-                            and not account.quantity_plan:
-                        result[field] = currency_obj.compute(son.currency_id.id,
-                            account.currency_id.id, result[field])
+                            and (field != 'quantity_plan'):
+                        son.currency_id.compute(result[field], account.currency_id)
                     result2[field] += result[field]
             return result2
-        for account in self.browse(self._ids):
+        for account in self:
             if account.id not in child_ids:
                 continue
-            recres[account.id] = account.recursive_computation()
+            recres[account.id] = recursive_computation(account)
         return recres
+#
+#                    if (account.currency_id.id != son.currency_id.id) \
+#                            and (field != 'quantity_plan'):
+#                        result[field] = currency_obj.compute(
+#                            cr, uid, son.currency_id.id,
+#                            account.currency_id.id, result[field],
+#                            context=context)
+#                    result2[field] += result[field]
+#            return result2
+###############################################
+#        child_ids = self.ids
+#        for account in self:
+#            if account.id not in child_ids:
+#                continue
+#            recursive_computation(account)
+###############################################
+#        print "\n$$accountaccount    ", account.debit_plan
+#        return recres
 
-    @api.model
     @api.depends('balance_plan', 'debit_plan', 'credit_plan', 'quantity_plan')
     def _debit_credit_bal_qtty_plan(self):
+        print "_debit_credit_bal_qtty_plan ####################################", self.ids
         res = {}
-        child_ids = []
-        child = self.search([('parent_id', 'child_of', self._ids)])
-        for child_id in child:
-            child_ids.append(child_id.id)
-        child_ids = tuple(child_ids)
-#        for i in child_ids:
-#            res[i] = {}
-#            for n in fields:
-#                res[i][n] = 0.0
+        fields = ['debit_plan', 'credit_plan', 'balance_plan', 'quantity_plan']
+#        child_ids = []
+        childs = self.search([('parent_id', 'child_of', self.ids)])
+#        for child in childs:
+#            child.debit_plan = 0
+#            child.credit_plan = 0
+#            child.balance_plan = 0
+#            child.quantity_plan = 0
+#        for child_id in child:
+#            child_ids.append(child_id.id)
+        child_ids = tuple(childs.ids)
+        print "\n\n########child_ids        ", child_ids
+        for i in child_ids:
+            res[i] = {}
+            for n in fields:
+                res[i][n] = 0.0
+        print "\n\nres ####################################", res
         if not child_ids:
             return res
 #        for ac_id in child_ids:
@@ -62,10 +101,11 @@ class AccountAnalyticAccount(models.Model):
 #                          'credit_plan': 0,
 #                          'balance_plan': 0,
 #                          'quantity_plan': 0}
-        child.write({'debit_plan': 0,
-                      'credit_plan': 0,
-                      'balance_plan': 0,
-                      'quantity_plan': 0})
+#        order.update({
+#            'invoice_count': len(set(invoice_ids.ids + refund_ids.ids)),
+#            'invoice_ids': invoice_ids.ids + refund_ids.ids,
+#            'invoice_status': invoice_status
+#        })
         where_date = ''
         where_clause_args = [child_ids]
         if self._context.get('from_date', False):
@@ -74,6 +114,7 @@ class AccountAnalyticAccount(models.Model):
         if self._context.get('to_date', False):
             where_date += " AND l.date <= %s"
             where_clause_args += [self._context['to_date']]
+        print "where_clause_args ---------------------------------------", where_clause_args
         self._cr.execute("""
               SELECT a.id,
                      sum(
@@ -97,28 +138,40 @@ class AccountAnalyticAccount(models.Model):
               AND a.active_analytic_planning_version = l.version_id
               """ + where_date + """
               GROUP BY a.id""", where_clause_args)
-        for row in self._cr.dictfetchall():
-            res[row['id']] = {}
-            for field in fields:
-                res[row['id']][field] = row[field]
-        return self._compute_level_tree_plan(child_ids)
+        rec = self._cr.dictfetchall()
+        print "######################################################################################", rec
+        for row in rec:
+            print "\n\nvoila ###################################", row
+            child_rec = self.browse(row['id'])
+            child_rec.debit_plan = row['debit_plan']
+            child_rec.credit_plan = row['credit_plan']
+            child_rec.balance_plan = row['balance_plan']
+            child_rec.quantity_plan = row['quantity_plan']
+#            res[row['id']] = {}
+#            for field in fields:
+#                res[row['id']][field] = row[field]
+        self.refresh()
+#        for a in childs:
+#        self._compute_level_tree_plan(child_ids, res)
+        print '999999999999999999999999999999999'
+        return self._compute_level_tree_plan(child_ids, res)
 
     balance_plan = fields.Float(
-        compute='_debit_credit_bal_qtty_plan', method=True,
-        string='Planned Balance', multi='debit_credit_bal_qtty_plan',
-        digits_compute=dp.get_precision('Account'))
+        compute='_debit_credit_bal_qtty_plan',
+        string='Planned Balance',
+        digits_compute=dp.get_precision('Account'), store=False)
     debit_plan = fields.Float(
-        compute='_debit_credit_bal_qtty_plan', method=True,
-        string='Planned Debit', multi='debit_credit_bal_qtty_plan',
-        digits_compute=dp.get_precision('Account'))
+        compute='_debit_credit_bal_qtty_plan',
+        string='Planned Debit',
+        digits_compute=dp.get_precision('Account'), store=False)
     credit_plan = fields.Float(
-        compute='_debit_credit_bal_qtty_plan', method=True,
-        string='Planned Credit', multi='debit_credit_bal_qtty_plan',
-        digits_compute=dp.get_precision('Account'))
+        compute='_debit_credit_bal_qtty_plan',
+        string='Planned Credit',
+        digits_compute=dp.get_precision('Account'), store=False)
     quantity_plan = fields.Float(
-        compute='_debit_credit_bal_qtty_plan', method=True,
-        string='Quantity Debit', multi='debit_credit_bal_qtty_plan',
-        digits_compute=dp.get_precision('Account'))
+        compute='_debit_credit_bal_qtty_plan',
+        string='Quantity Debit',
+        digits_compute=dp.get_precision('Account'), store=False)
     plan_line_ids = fields.One2many('account.analytic.line.plan',
                                      'account_id',
                                      'Analytic Entries')

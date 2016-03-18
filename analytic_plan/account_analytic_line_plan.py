@@ -100,30 +100,34 @@ class AccountAnalyticLinePlan(models.Model):
 #############################
 #    def on_change_amount_currency(self, amount_currency, currency_id, company_id):
 
-    @api.model
-    def on_change_amount_currency(self, amount_currency):
+    @api.onchange('amount_currency', 'currency_id')
+    def on_change_amount_currency(self):
+        print "on_change_amount_currency 44444444444444444444444444444444", self
 #        res = {}
 #        res['value'] = {}
         company = self.company_id
         company_currency = company.currency_id
 #        company_currency_id = company.currency_id.id
         currency = self.currency_id
-        if amount_currency:
-            amount_company_currency = currency.compute(amount_currency,
+        if self.amount_currency:
+            amount_company_currency = currency.compute(self.amount_currency,
                                                            company_currency)
         else:
             amount_company_currency = 0.0
 #        res['value'].update({
 #            'amount': amount_company_currency,
 #        })
+#        if self:
+        print "amount_company_currency 8888888888888888888888888888888888", amount_company_currency
         self.amount = amount_company_currency
         return {}
 
 #    def on_change_unit_amount(self, cr, uid, id, prod_id, quantity,
 #                              currency_id, company_id, unit=False,
 #                              journal_id=False, context=None):
-    @api.model
+    @api.onchange('unit_amount', 'product_uom_id')
     def on_change_unit_amount(self):
+        print "voila 222222222222222222222222222222222", self
 #        res = dict()
 #        res['value'] = {}
         product_obj = self.env['product.product']
@@ -135,7 +139,7 @@ class AccountAnalyticLinePlan(models.Model):
             prod = self.product_id
         if not self.journal_id:
             j = analytic_journal_obj.search([('type', '=', 'purchase')])
-            journal = j and j[0] or False
+            journal = j[0] if j and j[0] else False
         if not self.journal_id or not self.product_id:
             return {}
         journal = self.journal_id if self.journal_id else journal
@@ -159,6 +163,7 @@ class AccountAnalyticLinePlan(models.Model):
         # Compute based on pricetype
         product_price_type = product_price_type_obj.search([('field', '=', 'standard_price')])
         pricetype = product_price_type[0]
+        print "pricetype ################################", pricetype
         if self.journal_id:
             if journal.type == 'sale':
                 product_price_type = product_price_type_obj.search([('field', '=', 'list_price')])
@@ -179,40 +184,46 @@ class AccountAnalyticLinePlan(models.Model):
         self.env.args = cr, uid, misc.frozendict(context)
         prec = self.env['decimal.precision'].precision_get('Account')
         amount = amount_unit * self.unit_amount or 1.0
+        print "amount ################################", amount
         result = round(amount, prec)
+        print "\n\nresult ################################", result
         if not flag:
             if journal.type != 'sale':
                 result *= -1
 #        res = self.on_change_amount_currency(cr, uid, id, result, currency_id, 
 #                                             company_id, context)
-        self.on_change_amount_currency(result)
+#        if self:
+        self.amount_currency = result
+        self.general_account_id = a
+        print "\n\nresult 2222222 ################################", result
+        self.on_change_amount_currency()
 #        res['value'].update({
 #            'amount_currency': result,
 #            'general_account_id': a,
 #        })
-        self.amount_currency = result
-        self.general_account_id = a
         return {}
 
 ####### on_change="on_change_product_id(product_id, unit_amount, currency_id, company_id, product_uom_id, journal_id)"
 
     @api.onchange('product_id')
     def on_change_product_id(self):
+#        if self.product_id:
+        print "on_change_product_id #########################", self.product_id
 #        res = self.on_change_unit_amount(prod_id, quantity,
 #                                         currency_id, company_id,
 #                                         unit, journal_id)
         self.on_change_unit_amount()
-        if self.product_id:
-            prod = self.product_id
+#        if self.product_id:
+        prod = self.product_id
 #            res['value'].update({
 #                'name': prod.name,
 #            })
-            self.name = prod.name
-            if prod.uom_id:
+        self.name = prod.name
+        if prod.uom_id:
 #                res['value'].update({
 #                    'product_uom_id': prod.uom_id.id,
 #                })
-                self.product_uom_id = prod.uom_id.id
+            self.product_uom_id = prod.uom_id.id
         return {}
 
     @api.model

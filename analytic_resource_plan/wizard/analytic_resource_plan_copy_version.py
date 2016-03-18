@@ -37,9 +37,12 @@ class analytic_resource_plan_copy_version(models.TransientModel):
 
         data = self[0]
         record_ids = self._context and self._context.get('active_ids', False)
-        include_child = data.include_child or False
-        source_version = data.source_version_id or False
-        dest_version = data.dest_version_id or False
+        include_child = data.include_child if data and\
+            data.include_child else False
+        source_version = data.source_version_id if data and\
+            data.source_version_id else False
+        dest_version = data.dest_version_id if data and\
+            data.dest_version_id else False
         if dest_version.default_plan:
             raise Warning(_('It is prohibited to copy '
                                    'to the default planning version.'))
@@ -62,7 +65,9 @@ class analytic_resource_plan_copy_version(models.TransientModel):
         new_line_plan_ids.write({'version_id': dest_version[0]})
 
         return {
-            'domain': "[('id','in', ["+','.join(map(str, new_line_plan_ids))+"])]",
+            'domain':\
+                "[('id','in', [" + ','.join(map(str,
+                                                new_line_plan_ids)) + "])]",
             'name': _('Resource Planning Lines'),
             'view_type': 'form',
             'view_mode': 'tree,form',

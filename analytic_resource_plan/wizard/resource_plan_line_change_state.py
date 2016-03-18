@@ -13,7 +13,7 @@ class resource_plan_line_change_state(models.TransientModel):
     _name = "resource.plan.line.change.state"
     _description = "Change state of resource plan line"
 
-    state = fields.selection(
+    state = fields.Selection(
         [('draft', 'Draft'),
          ('confirm', 'Confirmed')], 'Status',
         select=True, required=True,
@@ -33,7 +33,8 @@ class resource_plan_line_change_state(models.TransientModel):
         elif new_state == 'confirm':
             line_plan.action_button_confirm()
         return {
-            'domain': "[('id','in', ["+','.join(map(str, record_ids))+"])]",
+            'domain': "[('id','in', [" + ','.join(map(str,
+                                                      record_ids)) + "])]",
             'name': _('Resource Planning Lines'),
             'view_type': 'form',
             'view_mode': 'tree,form',

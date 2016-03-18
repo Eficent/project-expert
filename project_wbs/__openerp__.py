@@ -8,7 +8,8 @@
     "name": "Work Breakdown Structure",
     "version": "8.0.1.0.0.",
     "author": "Eficent Business and IT Consulting Services S.L., "
-              "Serpent Consulting Services Pvt. Ltd.,",
+              "Serpent Consulting Services Pvt. Ltd.,"
+              "Odoo Community Association (OCA)",
     "website": "www.eficent.com",
     "category": "Generic Modules/Projects & Services",
     "depends": ["account", "project"],

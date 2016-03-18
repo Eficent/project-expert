@@ -7,7 +7,9 @@
 {
     "name": "Analytic Resource Planning",
     "version": "8.0.1.0.0.",
-    "author": "Eficent",
+    "author": "Eficent Business and IT Consulting Services S.L., "
+              "Serpent Consulting Services Pvt. Ltd.,"
+              "Odoo Community Association (OCA)",
     "website": "www.eficent.com",
     "category": "Generic Modules/Projects & Services",
     "depends": ["account", "purchase", "analytic_plan"],
@@ -30,6 +32,7 @@ Analytic Resource Planning
 
     """,
     "data": [
+        "view/account_analytic_line_plan_view.xml",
         "view/account_analytic_plan_version_view.xml",
         "view/analytic_resource_plan_view.xml",
         "view/analytic_account_view.xml",

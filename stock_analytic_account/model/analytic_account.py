@@ -22,5 +22,4 @@ class AccountAnalyticAccount(models.Model):
         if default is None:
             default = {}
         default['move_ids'] = []
-        res = super(AccountAnalyticAccount, self).copy(default)
-        return res
+        return super(AccountAnalyticAccount, self).copy(default)
