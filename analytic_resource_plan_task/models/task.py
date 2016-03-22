@@ -12,11 +12,15 @@ from datetime import datetime as dt
 class ProjectTask(models.Model):
     _inherit = "project.task"
 
-    resource_plan_lines = fields.One2many('analytic.resource.plan.line', 'task_id', "Planned resources")
-    default_resource_plan_line = fields.Many2one('analytic.resource.plan.line', 'Default resource plan line',
-                                                  required=False, ondelete="cascade",
-                                                  help='Resource plan line associated to the '
-                                                       'employee assigned to the task')
+    resource_plan_lines = fields.One2many('analytic.resource.plan.line',
+                                          'task_id', "Planned resources")
+    default_resource_plan_line = fields.Many2one('analytic.resource.plan.line',
+                                                 'Default resource plan line',
+                                                 required=False,
+                                                 ondelete="cascade",
+                                                 help='Resource plan line '
+                                                 'associated to the employee'
+                                                 'assigned to the task')
 
     @api.model
     def _prepare_resource_plan_line(self, plan_input):
@@ -52,13 +56,14 @@ class ProjectTask(models.Model):
             project = project_obj.browse(project_id)
             if project.analytic_account_id:
                 plan_output['account_id'] = project.analytic_account_id.id
-                plan_output['version_id'] = \
-                    project.analytic_account_id.active_analytic_planning_version and \
+                plan_output['version_id'] =\
+                    project.analytic_account_id.active_analytic_planning_version and\
                     project.analytic_account_id.active_analytic_planning_version.id
 
         plan_output['company_id'] = company_id
         company = company_obj.browse(company_id)
-        plan_output['currency_id'] = company.currency_id and company.currency_id.id or False
+        plan_output['currency_id'] = company.currency_id and\
+            company.currency_id.id or False
 
         #Look for the employee that the user of the task is assigned to
         employees = employee_obj.search([('user_id', '=', user_id)])
@@ -76,20 +81,23 @@ class ProjectTask(models.Model):
                 employee.product_id.uom_id.id or False
 
             prod = employee.product_id
-            general_account_id = prod.product_tmpl_id.property_account_expense.id
+            general_account_id =\
+                prod.product_tmpl_id.property_account_expense.id
             if not general_account_id:
-                general_account_id = prod.categ_id.property_account_expense_categ.id
+                general_account_id =\
+                    prod.categ_id.property_account_expense_categ.id
             if not general_account_id:
                 raise Warning(_('There is no expense account defined '
                                 'for this product: "%s" (id:%d)')
-                                     % (prod.name, prod.id,))
+                              % (prod.name, prod.id,))
 
             plan_output['general_account_id'] = general_account_id
             plan_output['journal_id'] = \
                 prod.expense_analytic_plan_journal_id and \
                 prod.expense_analytic_plan_journal_id.id or False
 
-            product_price_type = product_price_type_obj.search([('field', '=', 'standard_price')])
+            product_price_type = product_price_type_obj.\
+                search([('field', '=', 'standard_price')])
             pricetype = product_price_type[0]
             price_unit = prod.price_get(pricetype.field)[prod.id]
             prec = self.env['decimal.precision'].precision_get('Account')
@@ -118,13 +126,17 @@ class ProjectTask(models.Model):
                 if 'planned_hours' in vals and vals['planned_hours']:
                     if 'user_id' in vals and vals['user_id']:
                         if 'project_id' in vals and vals['project_id']:
-                            if (not 'delegated_user_id' in vals) or ('delegated_user_id'
-                                                                     in vals and not vals['delegated_user_id']):
-                                plan_output = self._prepare_resource_plan_line(vals)
+                            if ('delegated_user_id' not in vals) or\
+                            ('delegated_user_id' in vals and not\
+                             vals['delegated_user_id']):
+                                plan_output = self.\
+                                    _prepare_resource_plan_line(vals)
                                 plan_output['task_id'] = task.id
-                                new_plan_line = resource_plan_line_obj.create(plan_output)
+                                new_plan_line = resource_plan_line_obj.\
+                                    create(plan_output)
 
-                                new_vals['default_resource_plan_line'] = new_plan_line.id
+                                new_vals['default_resource_plan_line'] = \
+                                    new_plan_line.id
                                 task.write(new_vals)
         return task
 
@@ -160,7 +172,8 @@ class ProjectTask(models.Model):
                 if 'delegated_user_id' in vals:
                     plan_input['delegated_user_id'] = vals['delegated_user_id']
                 else:
-                    plan_input['delegated_user_id'] = t.delegated_user_id and t.delegated_user_id.id or False
+                    plan_input['delegated_user_id'] = t.delegated_user_id and\
+                    t.delegated_user_id.id or False
 
                 if 'name' in vals:
                     plan_input['name'] = vals['name']
@@ -180,18 +193,22 @@ class ProjectTask(models.Model):
                 if 'project_id' in vals:
                     plan_input['project_id'] = vals['project_id']
                 else:
-                    plan_input['project_id'] = t.project_id and t.project_id.id or False
+                    plan_input['project_id'] = t.project_id and\
+                    t.project_id.id or False
 
                 if 'company_id' in vals:
                     plan_input['company_id'] = vals['company_id']
                 else:
-                    plan_input['company_id'] = t.company_id and t.company_id.id or False
+                    plan_input['company_id'] = t.company_id and\
+                    t.company_id.id or False
 
                 if 'default_resource_plan_line' in vals:
-                    plan_input['default_resource_plan_line'] = vals['default_resource_plan_line']
+                    plan_input['default_resource_plan_line'] = \
+                        vals['default_resource_plan_line']
                 else:
                     plan_input['default_resource_plan_line'] = \
-                        t.default_resource_plan_line and t.default_resource_plan_line.id or False
+                        t.default_resource_plan_line and\
+                        t.default_resource_plan_line.id or False
 
                 stage = stage_obj.browse(plan_input['stage_id'])
                 state = stage.state
@@ -207,13 +224,16 @@ class ProjectTask(models.Model):
                     if plan_input['default_resource_plan_line']:
 
                         res = super(ProjectTask, self).write(vals)
-                        default_resource_plan_line = resource_plan_line_obj.browse([plan_input['default_resource_plan_line']])
+                        default_resource_plan_line = resource_plan_line_obj.\
+                            browse([plan_input['default_resource_plan_line']])
                         default_resource_plan_line.write(plan_output)
                         return res
 
                     else:
-                        new_resource_plan_line = resource_plan_line_obj.create(plan_output)
-                        vals['default_resource_plan_line'] = new_resource_plan_line.id
+                        new_resource_plan_line = resource_plan_line_obj.\
+                            create(plan_output)
+                        vals['default_resource_plan_line'] = \
+                            new_resource_plan_line.id
                         return super(ProjectTask, self).write(vals)
 
                 else:
@@ -240,16 +260,17 @@ class ProjectTask(models.Model):
             new_resource_plan_line = resource_plan_line.copy(default)
             if new_resource_plan_line:
                 map_resource_plan_line_id.append(new_resource_plan_line.id)
-                print "map_resource_plan_line_id (((((((((((((((((((((((", map_resource_plan_line_id
 
             default_resource_plan_line = \
                 self.default_resource_plan_line \
                 and self.default_resource_plan_line.id \
                 or False
             if resource_plan_line.id == default_resource_plan_line:
-                task_vals['default_resource_plan_line'] = new_resource_plan_line.id
+                task_vals['default_resource_plan_line'] = \
+                    new_resource_plan_line.id
         if map_resource_plan_line_id:
-            task_vals['resource_plan_lines'] = [(6, 0, map_resource_plan_line_id)]
+            task_vals['resource_plan_lines'] = [(6, 0,
+                                                 map_resource_plan_line_id)]
 
         if task_vals:
             new_task.write(task_vals)

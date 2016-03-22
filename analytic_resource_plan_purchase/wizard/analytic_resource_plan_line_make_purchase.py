@@ -35,7 +35,8 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
     order_line_ids = fields.Many2many('purchase.order.line',
                                       'make_purchase_order_line_rel',
                                       'order_line_id',
-                                      'make_purchase_order_id', default=_get_order_lines)
+                                      'make_purchase_order_id',
+                                      default=_get_order_lines)
 
     @api.multi
     def make_purchase_orders(self):
@@ -59,7 +60,6 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
             order_obj = self.env['purchase.order']
             order_line_obj = self.env['purchase.order.line']
             partner_obj = self.env['res.partner']
-            acc_pos_obj = self.env['account.fiscal.position']
 
             location_ids = []
             list_line = []
@@ -70,26 +70,26 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
             for line in line_plan_obj.browse(record_ids):
                 if not line.supplier_id:
                     raise Warning(_('Could not create purchase order !'),
-                        _('You have to enter a supplier.'))
+                                  _('You have to enter a supplier.'))
 
                 if supplier_data is not False \
                         and line.supplier_id.id != supplier_data:
                     raise Warning(_('Could not create purchase order !'),
-                        _('You have to select lines '
-                          'from the same supplier.'))
+                                  _('You have to select lines '
+                                    'from the same supplier.'))
                 else:
                     supplier_data = line.supplier_id.id
 
                 address_id = partner_obj.address_get([line.supplier_id.id],
-                    ['delivery'])['delivery']
+                                                     ['delivery'])['delivery']
                 partner = line.supplier_id
                 line_company_id = line.company_id \
                     and line.company_id.id or False
                 if company_id is not False \
                         and line_company_id != company_id:
                     raise Warning(_('Could not create purchase order !'),
-                        _('You have to select lines '
-                          'from the same company.'))
+                                  _('You have to select lines '
+                                    'from the same company.'))
                 else:
                     company_id = line_company_id
 
@@ -123,7 +123,8 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
                 if line.product_id:
                     taxes_ids = \
                         line.product_id.product_tmpl_id.supplier_taxes_id
-                    taxes = partner.property_account_position.map_tax(taxes_ids)
+                    taxes = \
+                        partner.property_account_position.map_tax(taxes_ids)
 
                 if taxes:
                     purchase_order_line.update({
@@ -140,13 +141,13 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
                          'location_id': location_id,
                          'company_id': company_id,
                          'fiscal_position':
-                            partner.property_account_position
-                            and partner.property_account_position.id
-                            or False,
+                            partner.property_account_position and
+                            partner.property_account_position.id or
+                            False,
                          'payment_term':
-                            partner.property_supplier_payment_term
-                            and partner.property_supplier_payment_term.id
-                            or False
+                            partner.property_supplier_payment_term and
+                            partner.property_supplier_payment_term.id or
+                            False
                          })
                     if line.account_id.user_id:
                         purchase.message_subscribe_users(user_ids=[line.account_id.user_id.id])

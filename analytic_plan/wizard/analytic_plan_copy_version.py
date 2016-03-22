@@ -21,7 +21,6 @@
 
 from openerp import api, fields, models
 from openerp.tools.translate import _
-import time
 
 
 class analytic_plan_copy_version(models.TransientModel):
@@ -32,17 +31,13 @@ class analytic_plan_copy_version(models.TransientModel):
     _description = "Analytic Plan copy versions"
 
     source_version_id = fields.Many2one('account.analytic.plan.version',
-                                         'Source Planning Version',
-                                         required=True)
+                                        'Source Planning Version',
+                                        required=True)
     dest_version_id = fields.Many2one('account.analytic.plan.version',
-                                       'Destination Planning Version',
-                                       required=True)
+                                      'Destination Planning Version',
+                                      required=True)
     include_child = fields.Boolean('Include child accounts',
-                                    required=True)
-
-    _defaults = {
-        'include_child': True,
-    }
+                                   required=True, default=True)
 
     @api.multi
     def analytic_plan_copy_version_open_window(self):
@@ -53,23 +48,27 @@ class analytic_plan_copy_version(models.TransientModel):
 
         data = self[0]
         record_ids = self._context and self._context.get('active_ids', False)
-        include_child = data.include_child if data and data.include_child else False
-        source_version = data.source_version_id if data and data.source_version_id else False
-        dest_version = data.dest_version_id if data and data.dest_version_id else False
+        include_child = data.include_child if data and\
+            data.include_child else False
+        source_version = data.source_version_id if data and\
+            data.source_version_id else False
+        dest_version = data.dest_version_id if data and\
+            data.dest_version_id else False
         if dest_version.default_plan:
             raise Warning(_('It is prohibited to copy '
-                                   'to the default planning version.'))
+                            'to the default planning version.'))
 
         if source_version == dest_version:
             raise Warning(_('Choose different source and destination '
-                                   'planning versions.'))
+                            'planning versions.'))
         if include_child:
             account_ids = analytic_obj.get_child_accounts(record_ids).keys()
         else:
             account_ids = record_ids
 
         line_plan = line_plan_obj.search([('account_id', 'in', account_ids),
-                      ('version_id', '=', source_version.id)])
+                                          ('version_id', '=',
+                                           source_version.id)])
 
         for line_plan_id in line_plan:
             new_line_plan_id = line_plan_id.copy()
@@ -78,7 +77,7 @@ class analytic_plan_copy_version(models.TransientModel):
         new_line_plan_ids.write({'version_id': dest_version[0]})
 
         return {
-            'domain': "[('id','in', ["+','.join(map(str, new_line_plan_ids))+"])]",
+            'domain': "[('id','in', [" + ','.join(map(str, new_line_plan_ids)) + "])]",
             'name': _('Analytic Planning Lines'),
             'view_type': 'form',
             'view_mode': 'tree,form',
