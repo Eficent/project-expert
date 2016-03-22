@@ -10,23 +10,16 @@ from openerp import api, fields, models
 class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
 
-    warehouse_id = fields.Many2one('stock.warehouse', 'Warehouse', default=_default_warehouse)
-    location_id = fields.Many2one('stock.location', 'Default Stock Location',
-                                  domain=[('usage', '<>', 'view')])
-    dest_address_id = fields.Many2one('res.partner', 'Delivery Address', default=_default_dest_address,
-                                      help="Delivery address for "
-                                      "the current contract project.")
-
     @api.model
     def _default_warehouse(self):
         warehouse_obj = self.env['stock.warehouse']
         company_obj = self.env['res.company']
         company_id = company_obj._company_default_get('stock.warehouse')
 
-        warehouse = warehouse_obj.search([('company_id', '=', company_id)], limit=1) or []
-
+        warehouse = warehouse_obj.search([('company_id', '=',
+                                           company_id)], limit=1) or []
         if warehouse:
-            return warehouse[0].id
+            return warehouse[0]
         else:
             return False
 
@@ -34,6 +27,16 @@ class AccountAnalyticAccount(models.Model):
     def _default_dest_address(self):
         partner_id = self._context.get('partner_id', False)
         if partner_id:
-            return self.env['res.partner'].address_get([partner_id], ['delivery'])['delivery']
+            return self.env['res.partner'].\
+                address_get([partner_id], ['delivery'])['delivery']
         else:
             return False
+
+    warehouse_id = fields.Many2one('stock.warehouse', 'Warehouse',
+                                   default=_default_warehouse)
+    location_id = fields.Many2one('stock.location', 'Default Stock Location',
+                                  domain=[('usage', '<>', 'view')])
+    dest_address_id = fields.Many2one('res.partner', 'Delivery Address',
+                                      default=_default_dest_address,
+                                      help="Delivery address for "
+                                      "the current contract project.")

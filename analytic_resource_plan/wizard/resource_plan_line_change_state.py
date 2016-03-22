@@ -8,7 +8,7 @@ from openerp import api, fields, models
 from openerp.tools.translate import _
 
 
-class resource_plan_line_change_state(models.TransientModel):
+class ResourcePlanLineChangeState(models.TransientModel):
 
     _name = "resource.plan.line.change.state"
     _description = "Change state of resource plan line"

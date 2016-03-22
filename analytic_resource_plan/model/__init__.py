@@ -3,10 +3,6 @@
 # Jordi Ballester Alomar
 # © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
-#from . import product
-#from . import account_analytic_plan_version
-#from . import analytic_resource_plan
-#from . import account_analytic_line_plan
 import product
 import account_analytic_plan_version
 import analytic_resource_plan

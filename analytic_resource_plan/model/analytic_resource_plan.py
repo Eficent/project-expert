@@ -22,54 +22,47 @@ class AnalyticResourcePlanLine(models.Model):
                 line.has_child = True
 
     account_id = fields.Many2one('account.analytic.account',
-                                  'Analytic Account', required=True,
-                                  ondelete='cascade', select=True,
-                                  domain=[('type', '<>', 'view')],
-                                  readonly=True,
-                                  states={
-                                      'draft': [('readonly', False)]
-                                  })
+                                 'Analytic Account', required=True,
+                                 ondelete='cascade', select=True,
+                                 domain=[('type', '<>', 'view')],
+                                 readonly=True,
+                                 states={'draft': [('readonly', False)]})
     name = fields.Char('Activity description', required=True, readonly=True,
-                        states={'draft': [('readonly', False)]})
+                       states={'draft': [('readonly', False)]})
     date = fields.Date('Date', required=True, select=True, readonly=True,
-                        states={'draft': [('readonly', False)]})
-    state = fields.Selection(
-        [('draft', 'Draft'),
-         ('confirm', 'Confirmed')], 'Status',
-        select=True, required=True, readonly=True,
-        help=' * The \'Draft\' status is used when a user is encoding '
-             'a new and unconfirmed resource plan line. '
-             '\n* The \'Confirmed\' status is used for to confirm the '
-             'execution of the resource plan lines.')
+                       states={'draft': [('readonly', False)]},
+                       default=lambda *a: time.strftime('%Y-%m-%d'))
+    state = fields.Selection([('draft', 'Draft'), ('confirm', 'Confirmed')],
+                             'Status', select=True, required=True,
+                             readonly=True, help=' * The \'Draft\' status is '
+                             'used when a user is encoding a new and '
+                             'unconfirmed resource plan line. \n* '
+                             'The \'Confirmed\' status is used for to confirm '
+                             'the execution of the resource plan lines.',
+                             default='draft')
     product_id = fields.Many2one('product.product', 'Product',
-                                  readonly=True, required=True,
-                                  states={'draft': [('readonly', False)]})
+                                 readonly=True, required=True,
+                                 states={'draft': [('readonly', False)]})
     product_uom_id = fields.Many2one('product.uom', 'UoM', required=True,
-                                      readonly=True,
-                                      states={'draft': [('readonly', False)]})
+                                     readonly=True,
+                                     states={'draft': [('readonly', False)]})
     unit_amount = fields.Float('Planned Quantity', readonly=True,
-                                required=True,
-                                states={'draft': [('readonly', False)]},
-                                help='Specifies the quantity that has '
-                                     'been planned.')
+                               required=True, states={'draft': [('readonly',
+                                                                 False)]},
+                               help='Specifies the quantity that has '
+                               'been planned.', default=1)
     notes = fields.Text('Notes')
     parent_id = fields.Many2one('analytic.resource.plan.line',
-                                 'Parent',
-                                 readonly=True,
-                                 ondelete='cascade')
+                                'Parent',
+                                readonly=True,
+                                ondelete='cascade')
     child_ids = fields.One2many('analytic.resource.plan.line',
-                                 'parent_id', 'Child lines')
+                                'parent_id', 'Child lines')
     has_child = fields.Boolean(compute='_has_child',
-                                 string="Child lines")
-    analytic_line_plan_ids = fields.One2many(
-        'account.analytic.line.plan', 'resource_plan_id',
-        'Planned costs', readonly=True)
-
-    _defaults = {
-        'state': 'draft',
-        'date': lambda *a: time.strftime('%Y-%m-%d'),
-        'unit_amount': 1,
-    }
+                               string="Child lines")
+    analytic_line_plan_ids = fields.One2many('account.analytic.line.plan',
+                                             'resource_plan_id',
+                                             'Planned costs', readonly=True)
 
     @api.one
     def copy(self, default=None):
@@ -92,16 +85,14 @@ class AnalyticResourcePlanLine(models.Model):
                 property_account_expense_categ.id
         if not general_account_id:
             raise Warning(_('There is no expense account defined '
-                                   'for this product: "%s" (id:%d)')
-                                 % (self.product_id.name,
-                                    self.product_id.id,))
+                            'for this product: "%s" (id:%d)')
+                          % (self.product_id.name, self.product_id.id,))
         default_plan = plan_version_obj.search([('default_resource_plan', '=',
-                                                 True)],
-            limit=1)
+                                                 True)], limit=1)
 
         if not default_plan:
             raise Warning(_('No active planning version for resource '
-                                   'plan exists.'))
+                            'plan exists.'))
 
         return [{
             'resource_plan_id': self.id,
@@ -159,7 +150,7 @@ class AnalyticResourcePlanLine(models.Model):
         if self.product_id:
             self.name = self.product_id.name
             self.product_uom_id = self.product_id.uom_id and\
-            self.product_id.uom_id.id or False
+                self.product_id.uom_id.id or False
 
     @api.onchange('account_id')
     def on_change_account_id(self):

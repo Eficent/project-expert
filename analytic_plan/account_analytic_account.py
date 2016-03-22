@@ -14,7 +14,7 @@ class AccountAnalyticAccount(models.Model):
     @api.multi
     def _get_active_analytic_planning_version(self):
         plan_versions = self.env['account.analytic.plan.version'].search([('default_plan', '=', True)])
-        print "plan_versions ##############################", plan_versions
+        print "plan_versions ##############################", plan_versions, plan_versions.default_plan
         for plan_version in plan_versions:
             if plan_version:
                 return plan_version

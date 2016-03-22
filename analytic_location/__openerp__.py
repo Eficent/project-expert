@@ -18,14 +18,10 @@ Features of this module:
     - Adds the stock location in the analytic account.
 
     """,
-    "init_xml": [],
-    "update_xml": [    
+    "data": [
         "view/analytic_account_view.xml",
     ],
-    'demo_xml': [],
-    'test':[],
     'installable': True,
     'active': False,
-    'certificate': '',
     'application': True,
 }
