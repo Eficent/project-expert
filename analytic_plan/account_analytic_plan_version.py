@@ -5,6 +5,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 from openerp.tools.translate import _
 from openerp import api, fields, models
+from openerp.exceptions import Warning as UserError
 
 
 class AccountAnalyticPlanVersion(models.Model):
@@ -33,7 +34,7 @@ class AccountAnalyticPlanVersion(models.Model):
                 other_default_committed = self.search([('default_committed',
                                                         '=', True)])
                 if other_default_committed:
-                    raise Warning(_('Only one default commitments version can'
+                    raise UserError(_('Only one default commitments version can'
                                     'exist.'))
 
     @api.model
@@ -42,7 +43,7 @@ class AccountAnalyticPlanVersion(models.Model):
             if vals['default_plan'] is True:
                 other_default_plan = self.search([('default_plan', '=', True)])
                 if other_default_plan:
-                    raise Warning(_('Only one default planning version can'
+                    raise UserError(_('Only one default planning version can'
                                     'exist.'))
 
     @api.model

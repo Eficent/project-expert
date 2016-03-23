@@ -6,6 +6,7 @@
 
 from openerp import api, fields, models
 from openerp.tools.translate import _
+from openerp.exceptions import Warning as UserError
 
 
 class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
@@ -69,14 +70,14 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
 
             for line in line_plan_obj.browse(record_ids):
                 if not line.supplier_id:
-                    raise Warning(_('Could not create purchase order !'),
-                                  _('You have to enter a supplier.'))
+                    raise UserError(_('Could not create purchase order !'
+                                      'You have to enter a supplier.'))
 
                 if supplier_data is not False \
                         and line.supplier_id.id != supplier_data:
-                    raise Warning(_('Could not create purchase order !'),
-                                  _('You have to select lines '
-                                    'from the same supplier.'))
+                    raise UserError(_('Could not create purchase order !'
+                                      'You have to select lines '
+                                      'from the same supplier.'))
                 else:
                     supplier_data = line.supplier_id.id
 
@@ -87,9 +88,9 @@ class AnalyticResourcePlanLineMakePurchase(models.TransientModel):
                     and line.company_id.id or False
                 if company_id is not False \
                         and line_company_id != company_id:
-                    raise Warning(_('Could not create purchase order !'),
-                                  _('You have to select lines '
-                                    'from the same company.'))
+                    raise UserError(_('Could not create purchase order !'
+                                      'You have to select lines '
+                                      'from the same company.'))
                 else:
                     company_id = line_company_id
 

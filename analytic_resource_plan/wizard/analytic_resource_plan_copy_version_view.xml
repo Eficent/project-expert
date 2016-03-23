@@ -33,8 +33,6 @@
             src_model="account.analytic.account"
             view_mode="form"
             target="new"
-            multi="True"
-            key2="client_action_multi"
             id="action_analytic_resource_plan_copy_version_form"/>
 
     </data>

@@ -4,7 +4,7 @@
 # © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 import logging
-from openerp.exceptions import Warning
+from openerp.exceptions import Warning as UserError
 from openerp import api, fields, models, _
 from openerp.tools import frozendict
 
@@ -30,8 +30,7 @@ class StockQuant(models.Model):
                                                    False)
         domain += [('analytic_account_id', '=', analytic_account_id)]
         return super(StockQuant, self).\
-            quants_get_prefered_domain(location, product, qty,
-                                       domain=domain,
+            quants_get_prefered_domain(location, product, qty, domain=domain,
                                        prefered_domain_list=prefered_domain_list,
                                        restrict_lot_id=restrict_lot_id,
                                        restrict_partner_id=restrict_partner_id)
@@ -205,7 +204,7 @@ class StockMove(models.Model):
         quant_obj = self.env["stock.quant"]
         #quantity should be given in MOVE UOM
         if quantity <= 0:
-            raise Warning(_('Please provide a positive quantity to scrap.'))
+            raise UserError(_('Please provide a positive quantity to scrap.'))
         res = []
         for move in self:
             source_location = move.location_id
@@ -302,9 +301,9 @@ class StockInventoryLine(models.Model):
                              ('id', 'not in', self._ids)])
             # END OF stock_analytic_account
             if inv_lines:
-                raise Warning(
-                    _('Duplicate line detected'),
-                    _('You cannot enter more than a single inventory line for '
+                raise UserError(
+                    _('Duplicate line detected'
+                      'You cannot enter more than a single inventory line for '
                       'the same Product, Location, Serial Number, Analytic '
                       'Account and date : \n'
                       '- Product: %s\n'

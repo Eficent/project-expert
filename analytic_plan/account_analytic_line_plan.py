@@ -8,6 +8,7 @@ import time
 import openerp.addons.decimal_precision as dp
 from openerp import api, fields, models
 from openerp.tools.translate import _
+from openerp.exceptions import Warning as UserError
 
 
 class AccountAnalyticLinePlan(models.Model):
@@ -131,7 +132,7 @@ class AccountAnalyticLinePlan(models.Model):
             if not a:
                 a = prod.categ_id.property_account_expense_categ.id
             if not a:
-                raise Warning(_('There is no expense account defined '
+                raise UserError(_('There is no expense account defined '
                                 'for this product: "%s" (id:%d)')
                               % (prod.name, prod.id,))
         else:
@@ -139,7 +140,7 @@ class AccountAnalyticLinePlan(models.Model):
             if not a:
                 a = prod.categ_id.property_account_income_categ.id
             if not a:
-                raise Warning(_('There is no income account defined '
+                raise UserError(_('There is no income account defined '
                                 'for this product: "%s" (id:%d)')
                               % (prod.name, self.product_id,))
         flag = False

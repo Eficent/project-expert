@@ -5,6 +5,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 from openerp import api, fields, models
 from openerp.tools.translate import _
+from openerp.exceptions import Warning as UserError
 
 
 class AnalyticResourcePlanLine(models.Model):
@@ -61,6 +62,6 @@ class AnalyticResourcePlanLine(models.Model):
                 if 'unit_amount' in vals:
                     if task.default_resource_plan_line and task.default_resource_plan_line.id == p.id:
                         if task.planned_hours != vals['unit_amount']:
-                            raise Warning(_('The quantity is different to the number of planned hours '
+                            raise UserError(_('The quantity is different to the number of planned hours '
                                             'in the associated task.'))
         return super(AnalyticResourcePlanLine, self).write(vals)

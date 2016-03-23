@@ -7,7 +7,7 @@
 import logging
 import time
 from openerp import api, fields, models, _
-from openerp.exceptions import Warning
+from openerp.exceptions import Warning as UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class AnalyticAccountSequence(models.Model):
         There is no access rights check.
         """
         if number_increment == 0:
-            raise Warning(_("Increment number must not be zero."))
+            raise UserError(_("Increment number must not be zero."))
         assert isinstance(self.id, (int, long))
         sql = "CREATE SEQUENCE analytic_account_sequence_%05d " \
               "INCREMENT BY %%s START WITH %%s" % self.id
@@ -149,7 +149,7 @@ class AnalyticAccountSequence(models.Model):
         There is no access rights check.
         """
         if number_increment == 0:
-            raise Warning(_("Increment number must not be zero."))
+            raise UserError(_("Increment number must not be zero."))
         assert isinstance(self.id, (int, long))
         seq_name = 'analytic_account_sequence_%05d' % (self.id,)
         self._cr.execute("SELECT relname FROM pg_class WHERE relkind = %s "
@@ -260,7 +260,7 @@ class AnalyticAccountSequence(models.Model):
             interpolated_prefix = self._interpolate(seq.prefix, d)
             interpolated_suffix = self._interpolate(seq.suffix, d)
         except ValueError:
-            raise Warning(_('Invalid prefix or suffix for sequence \'%s\'') %
+            raise UserError(_('Invalid prefix or suffix for sequence \'%s\'') %
                           (seq.get('name')))
         return interpolated_prefix + '%%0%sd' % seq['padding'] \
                                      % seq['number_next'] + interpolated_suffix

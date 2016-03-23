@@ -5,19 +5,16 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from openerp import tools
-from openerp.osv import fields, orm
+from openerp.osv import api, fields, models
 
 
-class report_stock_move(orm.Model):
+class report_stock_move(models.Model):
     _inherit = "report.stock.move"
-    _columns = {
-        'analytic_account_id': fields.many2one('account.analytic.account',
-                                               'Analytic Account',
-                                               readonly=True),
-        'analytic_reserved': fields.boolean('Stock reserved for '
-                                            'the Analytic Account',
-                                            readonly=True, select=True),
-    }
+
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account', readonly=True)
+    analytic_reserved = fields.Boolean('Stock reserved for Analytic Account',
+                                       readonly=True, select=True)
 
     def init(self, cr):
         tools.drop_view_if_exists(cr, 'report_stock_move')
@@ -88,16 +85,13 @@ class report_stock_move(orm.Model):
         """)
 
 
-class report_stock_inventory(orm.Model):
+class report_stock_inventory(models.Model):
     _inherit = "report.stock.inventory"
-    _columns = {
-        'analytic_account_id': fields.many2one('account.analytic.account',
-                                               'Analytic Account',
-                                               readonly=True),
-        'analytic_reserved': fields.boolean('Stock reserved for '
-                                            'the Analytic Account',
-                                            readonly=True, select=True),
-    }
+
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account', readonly=True)
+    analytic_reserved = fields.Boolean('Stock reserved for Analytic Account',
+                                       readonly=True, select=True)
 
     def init(self, cr):
         tools.drop_view_if_exists(cr, 'report_stock_inventory')

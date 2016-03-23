@@ -11,14 +11,16 @@ class AccountAnalyticAccount(models.Model):
 
     _inherit = 'account.analytic.account'
 
-    @api.multi
-    def _get_active_analytic_planning_version(self):
+    @api.model
+    def default_get(self, fields):
+        res = super(AccountAnalyticAccount, self).default_get(fields)
         plan_versions = self.env['account.analytic.plan.version'].\
             search([('default_plan', '=', True)])
         for plan_version in plan_versions:
             if plan_version:
-                return plan_version
-        return False
+                res['active_analytic_planning_version'] = plan_version.id
+                return res
+        return res
 
     @api.multi
     def _compute_level_tree_plan(self, child_ids, res):
@@ -116,7 +118,8 @@ class AccountAnalyticAccount(models.Model):
                                     'Analytic Entries')
     active_analytic_planning_version = fields.\
         Many2one('account.analytic.plan.version', 'Active planning Version',
-                 required=True, default=_get_active_analytic_planning_version)
+                 required=True)
+#                required=True, default=_get_active_analytic_planning_version)
 
     @api.one
     def copy(self, default=None):

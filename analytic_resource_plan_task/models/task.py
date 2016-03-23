@@ -7,6 +7,8 @@ from openerp.tools.translate import _
 from openerp import api, fields, models
 from datetime import datetime, date
 from datetime import datetime as dt
+from openerp.exceptions import Warning as UserError
+
 
 
 class ProjectTask(models.Model):
@@ -87,7 +89,7 @@ class ProjectTask(models.Model):
                 general_account_id =\
                     prod.categ_id.property_account_expense_categ.id
             if not general_account_id:
-                raise Warning(_('There is no expense account defined '
+                raise UserError(_('There is no expense account defined '
                                 'for this product: "%s" (id:%d)')
                               % (prod.name, prod.id,))
 

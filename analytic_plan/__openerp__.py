@@ -80,5 +80,4 @@ More information and assistance:
     ],
     'installable': True,
     'active': False,
-    'certificate': '',
 }

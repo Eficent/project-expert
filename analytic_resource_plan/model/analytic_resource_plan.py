@@ -3,9 +3,10 @@
 # Jordi Ballester Alomar
 # © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+import time
 from openerp import api, fields, models
 from openerp.tools.translate import _
-import time
+from openerp.exceptions import Warning as UserError
 
 
 class AnalyticResourcePlanLine(models.Model):
@@ -84,14 +85,14 @@ class AnalyticResourcePlanLine(models.Model):
             general_account_id = self.product_id.categ_id.\
                 property_account_expense_categ.id
         if not general_account_id:
-            raise Warning(_('There is no expense account defined '
+            raise UserError(_('There is no expense account defined '
                             'for this product: "%s" (id:%d)')
                           % (self.product_id.name, self.product_id.id,))
         default_plan = plan_version_obj.search([('default_resource_plan', '=',
                                                  True)], limit=1)
 
         if not default_plan:
-            raise Warning(_('No active planning version for resource '
+            raise UserError(_('No active planning version for resource '
                             'plan exists.'))
 
         return [{
@@ -131,7 +132,7 @@ class AnalyticResourcePlanLine(models.Model):
         for line in self:
             for child in line.child_ids:
                 if child.state not in ('draft', 'plan'):
-                    raise Warning(_('All the child resource plan lines must '
+                    raise UserError(_('All the child resource plan lines must '
                                     ' be in Draft state.'))
             line._delete_analytic_lines()
         return self.write({'state': 'draft'})
@@ -140,7 +141,7 @@ class AnalyticResourcePlanLine(models.Model):
     def action_button_confirm(self):
         for line in self:
             if line.unit_amount == 0:
-                raise Warning(_('Quantity should be greater than 0.'))
+                raise UserError(_('Quantity should be greater than 0.'))
             if not line.child_ids:
                 line.create_analytic_lines()
         return self.write({'state': 'confirm'})
@@ -171,6 +172,6 @@ class AnalyticResourcePlanLine(models.Model):
     def unlink(self):
         for line in self:
             if line.analytic_line_plan_ids:
-                raise Warning(_('You cannot delete a record that refers to '
+                raise UserError(_('You cannot delete a record that refers to '
                                 'analytic plan lines!'))
         return super(AnalyticResourcePlanLine, self).unlink()

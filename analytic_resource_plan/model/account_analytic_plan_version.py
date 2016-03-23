@@ -5,6 +5,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 from openerp.tools.translate import _
 from openerp import api, fields, models
+from openerp.exceptions import Warning as UserError
 
 
 class AccountAnalyticPlanVersion(models.Model):
@@ -20,7 +21,7 @@ class AccountAnalyticPlanVersion(models.Model):
                 other_default_resource = self.search([('default_resource_plan',
                                                        '=', True)])
                 if other_default_resource:
-                    raise Warning(_('Only one default for resource '
+                    raise UserError(_('Only one default for resource '
                                     'plan version can exist.'))
 
     @api.model

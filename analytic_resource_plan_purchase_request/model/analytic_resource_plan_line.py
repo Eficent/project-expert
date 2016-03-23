@@ -5,6 +5,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 from openerp import api, fields, models
 from openerp.tools.translate import _
+from openerp.exceptions import Warning as UserError
+
 _REQUEST_STATE = [
     ('none', 'No Request'),
     ('draft', 'Draft'),
@@ -67,6 +69,6 @@ class AnalyticResourcePlanLine(models.Model):
     def unlink(self):
         for line in self:
             if line.purchase_request_lines:
-                raise Warning(_('You cannot delete a record that refers to '
+                raise UserError(_('You cannot delete a record that refers to '
                                 'purchase request lines!'))
         return super(AnalyticResourcePlanLine, self).unlink()

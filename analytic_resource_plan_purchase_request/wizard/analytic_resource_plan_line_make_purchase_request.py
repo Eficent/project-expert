@@ -7,6 +7,7 @@ from openerp.tools import misc
 from openerp.tools.translate import _
 from openerp import api, fields, models
 from openerp import netsvc
+from openerp.exceptions import Warning as UserError
 import openerp.addons.decimal_precision as dp
 
 
@@ -82,17 +83,17 @@ class AnalyticResourcePlanLineMakePurchaseRequest(models.TransientModel):
         for item in make_purchase_request.item_ids:
             line = item.line_id
             if line.state != 'confirm':
-                raise Warning(_('Could not create purchase request !'
+                raise UserError(_('Could not create purchase request !'
                                 'All resource plan lines must be confirmed.'))
             if item.product_qty < 0.0:
-                raise Warning(_('Could not create purchase request !'
+                raise UserError(_('Could not create purchase request !'
                                 'Enter a positive quantity.'))
 
             line_company_id = line.account_id.company_id and\
                 line.account_id.company_id.id or False
             if company_id is not False \
                     and line_company_id != company_id:
-                raise Warning(_('Could not create purchase request ! You have '
+                raise UserError(_('Could not create purchase request ! You have '
                                 'to select lines from the same company.'))
             else:
                 company_id = line_company_id
@@ -101,7 +102,7 @@ class AnalyticResourcePlanLineMakePurchaseRequest(models.TransientModel):
                 and line.account_id.warehouse_id.id or False
             if warehouse_id is not False \
                     and line_warehouse_id != warehouse_id:
-                raise Warning(_('Could not create purchase request ! You have '
+                raise UserError(_('Could not create purchase request ! You have '
                                 'to select lines from the same warehouse.'))
             else:
                 warehouse_id = line_warehouse_id
