@@ -20,13 +20,14 @@ class AnalyticResourcePlanLine(models.Model):
                     plan_line.has_active_order = True
 
     order_line_ids = fields.Many2many('purchase.order.line',
-                                       'analytic_resource_plan_order_line_rel',
-                                       'order_line_id',
-                                       'analytic_resource_plan_line_id')
+                                      'analytic_resource_plan_order_line_rel',
+                                      'order_line_id',
+                                      'analytic_resource_plan_line_id')
 
     has_active_order = fields.Boolean(compute='_has_active_order', method=True,
-                                      string='Order', help="Indicates that this resource plan line "
-                                      "contains at least one non-cancelled purchase order.")
+                                      string='Order', help="Indicates that "
+                                      "this resource plan line contains at "
+                                      "least one non-cancelled purchase order")
 
     @api.one
     def copy(self, default=None):

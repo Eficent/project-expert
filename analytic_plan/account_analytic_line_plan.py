@@ -161,7 +161,7 @@ class AccountAnalyticLinePlan(models.Model):
         if self.product_uom_id:
             # price_get() will respect a 'uom' in its context, in order
             # to return a default price for those units
-            ctx['uom'] = self.product_uom_id
+            ctx['uom'] = self.product_uom_id.id
         amount_unit = prod.with_context(ctx).\
             price_get(pricetype.field)[prod.id]
         self.env.args = cr, uid, misc.frozendict(context)

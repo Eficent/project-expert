@@ -127,7 +127,7 @@ class ProjectTask(models.Model):
                     if 'user_id' in vals and vals['user_id']:
                         if 'project_id' in vals and vals['project_id']:
                             if ('delegated_user_id' not in vals) or\
-                            ('delegated_user_id' in vals and not\
+                            ('delegated_user_id' in vals and not
                              vals['delegated_user_id']):
                                 plan_output = self.\
                                     _prepare_resource_plan_line(vals)
@@ -173,7 +173,7 @@ class ProjectTask(models.Model):
                     plan_input['delegated_user_id'] = vals['delegated_user_id']
                 else:
                     plan_input['delegated_user_id'] = t.delegated_user_id and\
-                    t.delegated_user_id.id or False
+                        t.delegated_user_id.id or False
 
                 if 'name' in vals:
                     plan_input['name'] = vals['name']
@@ -194,13 +194,13 @@ class ProjectTask(models.Model):
                     plan_input['project_id'] = vals['project_id']
                 else:
                     plan_input['project_id'] = t.project_id and\
-                    t.project_id.id or False
+                        t.project_id.id or False
 
                 if 'company_id' in vals:
                     plan_input['company_id'] = vals['company_id']
                 else:
                     plan_input['company_id'] = t.company_id and\
-                    t.company_id.id or False
+                        t.company_id.id or False
 
                 if 'default_resource_plan_line' in vals:
                     plan_input['default_resource_plan_line'] = \
