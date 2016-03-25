@@ -28,6 +28,7 @@ class analytic_plan_copy_version(models.TransientModel):
     @api.multi
     def analytic_plan_copy_version_open_window(self):
         new_line_plan_ids = []
+        new_line_plan_rec = []
         analytic_obj = self.env['account.analytic.account']
         line_plan_obj = self.env['account.analytic.line.plan']
 
@@ -47,30 +48,23 @@ class analytic_plan_copy_version(models.TransientModel):
         if dest_version.default_plan:
             raise UserError(_('It is prohibited to copy '
                             'to the default planning version.'))
-        print "source_version ############################", source_version
         if source_version == dest_version:
             raise UserError(_('Choose different source and destination '
                             'planning versions.'))
         if include_child:
             account_ids = record.get_child_accounts().keys()
-            print "account_ids ############################", account_ids
-            aarecord = analytic_obj.browse(account_ids)
-            print "aarecord ############################", aarecord, aarecord.name
         else:
             account_ids = record_ids
-            print "account_ids 2222222222222222222222222222", account_ids
 
         line_plans = line_plan_obj.search([('account_id', 'in', account_ids),
                                           ('version_id', '=',
                                            source_version.id)])
-        print "line_plans ((((((((( &&&&&&&&&&&&&&&&&&&&&&&&&&&&&", line_plans
         for line_plan in line_plans:
             new_line_plan = line_plan.copy()
-            print "new_line_plan ############################", new_line_plan
-            new_line_plan_ids.append(new_line_plan)
-            print "new_line_plan_ids ############################", new_line_plan_ids
-        print "new_line_plan_ids ############################", new_line_plan_ids
-        new_line_plan_ids.write({'version_id': dest_version[0]})
+            new_line_plan_rec.append(new_line_plan)
+            new_line_plan_ids.append(new_line_plan.id)
+        if new_line_plan_rec:
+            new_line_plan_rec.write({'version_id': dest_version[0]})
 
         return {
                 'domain': "[('id','in', [" + ','.join(map(str, new_line_plan_ids)) + "])]",

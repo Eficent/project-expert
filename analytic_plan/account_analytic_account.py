@@ -119,7 +119,6 @@ class AccountAnalyticAccount(models.Model):
     active_analytic_planning_version = fields.\
         Many2one('account.analytic.plan.version', 'Active planning Version',
                  required=True)
-#                required=True, default=_get_active_analytic_planning_version)
 
     @api.one
     def copy(self, default=None):

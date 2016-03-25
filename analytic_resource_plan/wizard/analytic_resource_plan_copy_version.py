@@ -28,6 +28,7 @@ class AnalyticResourcePlanCopyVersion(models.TransientModel):
     @api.multi
     def analytic_resource_plan_copy_version_open_window(self):
         new_line_plan_ids = []
+        new_line_plan_rec = []
         analytic_obj = self.env['account.analytic.account']
         line_plan_obj = self.env['analytic.resource.plan.line']
 
@@ -62,11 +63,10 @@ class AnalyticResourcePlanCopyVersion(models.TransientModel):
 
         for line_plan in line_plans:
             new_line_plan = line_plan.copy()
-            print "new_line_plan ############################", new_line_plan
-            new_line_plan_ids.append(new_line_plan)
-            print "new_line_plan_ids ############################", new_line_plan_ids
-        print "new_line_plan_ids ############################", new_line_plan_ids
-        new_line_plan_ids.write({'version_id': dest_version[0]})
+            new_line_plan_rec.append(new_line_plan)
+            new_line_plan_ids.append(new_line_plan.id)
+        if new_line_plan_rec:
+            new_line_plan_rec.write({'version_id': dest_version[0]})
 
         return {
                 'domain': "[('id','in', [" + ','.join(map(str, new_line_plan_ids)) + "])]",
