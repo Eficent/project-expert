@@ -53,8 +53,7 @@
                             <page name="products" string="Products">
                                 <field name="line_ids" nolabel="1">
                                     <tree string="Stock Analytic Reservation Lines" editable="bottom">
-                                        <field name="product_id"
-                                               on_change="onchange_product_id(product_id)"/>
+                                        <field name="product_id"/>
                                         <field name="product_uom_qty"/>
                                         <field name="product_uom_id"/>
                                         <field name="location_id"/>

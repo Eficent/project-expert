@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-# © 2015 Eficent Business and IT Consulting Services S.L.
-# - Jordi Ballester Alomar
+# © 2015 Eficent Business and IT Consulting Services S.L. -
+# Jordi Ballester Alomar
+# © 2015 Serpent Consulting Services Pvt. Ltd. - Sudhir Arya
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
-from openerp.osv import fields, orm
+from openerp import api, fields, models
 import openerp.addons.decimal_precision as dp
 from openerp.tools.translate import _
+from openerp.exceptions import Warning as UserError
+from datetime import datetime
 
 _STATES = [
     ('draft', 'Draft'),
@@ -21,351 +24,276 @@ _MOVE_STATES = [('draft', 'New'),
                 ('done', 'Done')]
 
 
-class StockAnalyticReserve(orm.Model):
+class StockAnalyticReserve(models.Model):
 
     _name = 'stock.analytic.reserve'
     _description = 'Stock Analytic Reservation'
 
-    _columns = {
-
-        'name': fields.char('Reference', required=True),
-
-        'action': fields.selection([('reserve', 'Reserve'),
-                                   ('unreserve', 'Unreserve')],
-                                   string="Reservation Action",
-                                   required=True,
-                                   states={'draft': [('readonly', False)]}),
-
-        'state': fields.selection(selection=_STATES,
-                                  string='Status',
-                                  readonly=True,
-                                  required=True,
-                                  default='draft',
-                                  states={'draft': [('readonly', False)]}),
-
-        'company_id': fields.many2one('res.company', 'Company', required=True),
-
-        'date': fields.date('Date'),
-
-        'warehouse_id': fields.many2one('stock.warehouse', 'Warehouse',
-                                        required=True),
-
-        'wh_analytic_reserve_location_id': fields.related(
-            'warehouse_id', 'wh_analytic_reserve_location_id',
-            type='many2one', relation='stock.location',
-            string='Analytic Reservation Location', readonly=True),
-
-        'line_ids': fields.one2many('stock.analytic.reserve.line',
-                                    'reserve_id')
-    }
-
-    def _get_default_warehouse(self, cr, uid, context=None):
-        warehouse_obj = self.pool['stock.warehouse']
-        company_id = self.pool.get('res.users').browse(
-            cr, uid, uid).company_id.id
-        warehouse_ids = warehouse_obj.search(
-            cr, uid, [('company_id', '=', company_id)], context=context)
-        warehouse_id = warehouse_ids and warehouse_ids[0] or False
+    @api.model
+    def _get_default_warehouse(self):
+        warehouse_obj = self.env['stock.warehouse']
+        company_id = self.env['res.users'].browse(self._uid).company_id.id
+        warehouse = warehouse_obj.search([('company_id', '=', company_id)])
+        warehouse_id = warehouse.id and warehouse[0].id or False
         return warehouse_id
 
-    _defaults = {
-        'company_id': lambda self, cr, uid, context: self.pool.get(
-            'res.users').browse(cr, uid, uid, context).company_id.id,
-        'date': fields.date.context_today,
-        'state': 'draft',
-        'warehouse_id': _get_default_warehouse,
-        'name': lambda obj, cr, uid, context: '/'
-    }
+    name = fields.Char('Reference', required=True,
+                       default=lambda obj: '/')
 
-    def create(self, cr, uid, vals, context=None):
+    action = fields.Selection([('reserve', 'Reserve'),
+                               ('unreserve', 'Unreserve')],
+                              string="Reservation Action", required=True,
+                              states={'draft': [('readonly', False)]})
+
+    state = fields.Selection(selection=_STATES, string='Status', readonly=True,
+                             required=True, default='draft',
+                             states={'draft': [('readonly', False)]})
+
+    company_id = fields.Many2one('res.company', 'Company', required=True,
+                                 default=lambda self: self.env['res.users'].
+                                 browse(self._uid).company_id.id,)
+
+    date = fields.Date('Date', default=fields.Date.context_today)
+
+    warehouse_id = fields.Many2one('stock.warehouse', 'Warehouse',
+                                   required=True,
+                                   default=_get_default_warehouse)
+
+    wh_analytic_reserve_location_id = fields.\
+        Many2one(related='warehouse_id.wh_analytic_reserve_location_id',
+                 relation='stock.location',
+                 string='Analytic Reservation Location', readonly=True)
+
+    line_ids = fields.One2many('stock.analytic.reserve.line', 'reserve_id')
+
+    @api.model
+    def create(self, vals):
         if vals.get('name', '/') == '/':
-            vals['name'] = self.pool['ir.sequence'].get(
-                cr, uid, 'stock.analytic.reserve') or '/'
-        return super(StockAnalyticReserve, self).create(cr, uid, vals,
-                                                        context=context)
+            vals['name'] = self.env['ir.sequence'].\
+                get('stock.analytic.reserve') or '/'
+        return super(StockAnalyticReserve, self).create(vals)
 
-    def action_prepare(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.prepare_stock_moves(cr, uid, line_ids, context=context)
-        self.write(cr, uid, ids, {'state': 'prepared'}, context=context)
+    @api.multi
+    def action_prepare(self):
+        for reserve in self:
+            reserve.line_ids.prepare_stock_moves()
+        self.write({'state': 'prepared'})
         return True
 
-    def action_confirm(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.confirm_stock_moves(cr, uid, line_ids, context=context)
-        self.write(cr, uid, ids, {'state': 'confirmed'}, context=context)
+    @api.multi
+    def action_confirm(self):
+        for reserve in self:
+            reserve.line_ids.confirm_stock_moves()
+        self.write({'state': 'confirmed'})
         return True
 
-    def action_assign(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.assign_stock_moves(cr, uid, line_ids, context=context)
+    @api.multi
+    def action_assign(self):
+        for reserve in self:
+            reserve.line_ids.assign_stock_moves()
         return True
 
-    def action_force_assign(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.force_assign_stock_moves(cr, uid, line_ids,
-                                              context=context)
+    @api.multi
+    def action_force_assign(self):
+        for reserve in self:
+            reserve.line_ids.force_assign_stock_moves()
         return True
 
-    def action_cancel(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.cancel_stock_moves(cr, uid, line_ids, context=context)
-        self.write(cr, uid, ids, {'state': 'cancel'}, context=context)
+    @api.multi
+    def action_cancel(self):
+        for reserve in self:
+            reserve.line_ids.cancel_stock_moves()
+        self.write({'state': 'cancel'})
         return True
 
-    def action_draft(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.remove_stock_moves(cr, uid, line_ids, context=context)
-        self.write(cr, uid, ids, {'state': 'draft'}, context=context)
+    @api.multi
+    def action_draft(self):
+        for reserve in self:
+            reserve.line_ids.remove_stock_moves()
+        self.write({'state': 'draft'})
         return True
 
-    def action_done(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        line_obj = self.pool['stock.analytic.reserve.line']
-        for reserve in self.browse(cr, uid, ids, context=context):
-            line_ids = [line.id for line in reserve.line_ids]
-            line_obj.done_stock_moves(cr, uid, line_ids, context=context)
-        self.write(cr, uid, ids, {'state': 'done'}, context=context)
+    @api.multi
+    def action_done(self):
+        for reserve in self:
+            reserve.line_ids.done_stock_moves()
+        self.write({'state': 'done'})
         return True
 
-    def copy_data(self, cr, uid, id, default=None, context=None):
-        if context is None:
-            context = {}
+    @api.one
+    def copy_data(self, default=None):
         if default is None:
             default = {}
         default['name'] = '/'
-        res = super(StockAnalyticReserve, self).copy_data(
-            cr, uid, id, default, context)
-        return res
+        return super(StockAnalyticReserve, self).copy_data(default)
 
 
-class StockAnalyticReserveLine(orm.Model):
+class StockAnalyticReserveLine(models.Model):
 
     _name = 'stock.analytic.reserve.line'
     _description = 'Stock Analytic Reservation Line'
 
-    _columns = {
-        'reserve_id': fields.many2one('stock.analytic.reserve',
-                                      'Stock Analytic Reservation',
-                                      required=True,
-                                      readonly=True,
-                                      ondelete='cascade'),
+    reserve_id = fields.Many2one('stock.analytic.reserve',
+                                 'Stock Analytic Reservation',
+                                 required=True,
+                                 readonly=True,
+                                 ondelete='cascade')
 
-        'product_id': fields.many2one(
-            'product.product', 'Product', required=True,
-            domain=[('type', '=', 'product')]),
+    product_id = fields.Many2one('product.product', 'Product', required=True,
+                                 domain=[('type', '=', 'product')])
 
-        'product_uom_qty': fields.float(
-            'Quantity',
-            digits_compute=dp.get_precision('Product Unit of Measure'),
-            required=True),
+    product_uom_qty =\
+        fields.\
+            Float('Quantity',
+                  digits_compute=dp.get_precision('Product Unit of Measure'),
+                  required=True)
 
-        'product_uom_id': fields.many2one('product.uom', 'Unit of Measure',
-                                          required=True),
+    product_uom_id = fields.Many2one('product.uom', 'Unit of Measure',
+                                     required=True)
 
-        'location_id': fields.many2one('stock.location', 'Stock Location',
-                                       required=True),
+    location_id = fields.Many2one('stock.location', 'Stock Location',
+                                  required=True)
 
-        'analytic_account_id': fields.many2one('account.analytic.account',
-                                               'Analytic Account',
-                                               required=True),
+    analytic_account_id = fields.Many2one('account.analytic.account',
+                                          'Analytic Account',
+                                          required=True)
 
-        'company_id': fields.related('reserve_id', 'company_id',
-                                     type='many2one',
-                                     relation='res.company',
-                                     string='Company',
-                                     store=True, readonly=True),
+    company_id = fields.Many2one(related='reserve_id.company_id',
+                                 relation='res.company',
+                                 string='Company',
+                                 store=True, readonly=True)
 
-        'out_move_id': fields.many2one('stock.move', 'Out Stock Move',
-                                       readonly=True),
+    out_move_id = fields.Many2one('stock.move', 'Out Stock Move',
+                                  readonly=True)
 
-        'out_move_status': fields.related('out_move_id', 'state',
-                                          type='selection',
-                                          selection=_MOVE_STATES,
-                                          string='Out Move Status',
-                                          readonly=True),
+    out_move_status = fields.Selection(related='out_move_id.state',
+                                       selection=_MOVE_STATES,
+                                       string='Out Move Status',
+                                       readonly=True)
 
-        'in_move_id': fields.many2one('stock.move', 'In Stock Move',
-                                      readonly=True)
-    }
+    in_move_id = fields.Many2one('stock.move', 'In Stock Move',
+                                 readonly=True)
 
-    def onchange_product_id(self, cr, uid, ids, product_id, context=None):
+    @api.onchange('product_id')
+    def onchange_product_id(self):
         """ Finds UoM for changed product.
         @param product_id: Changed id of product.
         @return: Dictionary of values.
         """
-        if product_id:
-            prod = self.pool.get('product.product').browse(cr, uid,
-                                                           product_id,
-                                                           context=context)
+        if self.product_id:
             d = {'product_uom_id': [('category_id', '=',
-                                     prod.uom_id.category_id.id)]}
-            v = {'product_uom_id': prod.uom_id.id}
-            return {'value': v, 'domain': d}
+                                     self.product_id.uom_id.category_id.id)]}
+            self.product_uom_id = self.product_id.uom_id.id
+            return {'domain': d}
         return {'domain': {'product_uom': []}}
 
-    def _prepare_basic_move(self, cr, uid, line, context=None):
-        if context is None:
-            context = {}
+    @api.one
+    def _prepare_basic_move(self):
 
         return {
-            'name': line.product_id.name,
+            'name': self.product_id.name,
             'create_date': fields.datetime.now,
-            'date': line.reserve_id.date,
-            'product_id': line.product_id.id,
-            'product_qty': line.product_uom_qty,
-            'product_uom': line.product_uom_id.id,
-            'company_id': line.company_id.id,
+            'date': self.reserve_id.date,
+            'product_id': self.product_id.id,
+            'product_qty': self.product_uom_qty,
+            'product_uom': self.product_uom_id.id,
+            'company_id': self.company_id.id,
             'type': 'internal'
         }
 
-    def _prepare_out_move(self, cr, uid, line, context=None):
-        res = self._prepare_basic_move(cr, uid, line, context=context)
-        res['name'] = _('OUT:') + (line.reserve_id.name or '')
-        res['location_id'] = line.location_id.id
+    @api.one
+    def _prepare_out_move(self):
+        res = self._prepare_basic_move()
+        res['name'] = _('OUT:') + (self.reserve_id.name or '')
+        res['location_id'] = self.location_id.id
         res['location_dest_id'] = \
-            line.reserve_id.wh_analytic_reserve_location_id.id
-        if line.reserve_id.action == 'unreserve':
-            res['analytic_account_id'] = line.analytic_account_id.id
+            self.reserve_id.wh_analytic_reserve_location_id.id
+        if self.reserve_id.action == 'unreserve':
+            res['analytic_account_id'] = self.analytic_account_id.id
         else:
             res['analytic_account_id'] = False
         return res
 
-    def _prepare_in_move(self, cr, uid, line, context=None):
-        res = self._prepare_basic_move(cr, uid, line, context=context)
-        res['name'] = _('IN:') + (line.reserve_id.name or '')
-        res['location_id'] = line.reserve_id.wh_analytic_reserve_location_id.id
-        res['location_dest_id'] = line.location_id.id
-        if line.reserve_id.action == 'reserve':
-            res['analytic_account_id'] = line.analytic_account_id.id
+    @api.one
+    def _prepare_in_move(self):
+        res = self._prepare_basic_move()
+        res['name'] = _('IN:') + (self.reserve_id.name or '')
+        res['location_id'] = self.reserve_id.wh_analytic_reserve_location_id.id
+        res['location_dest_id'] = self.location_id.id
+        if self.reserve_id.action == 'reserve':
+            res['analytic_account_id'] = self.analytic_account_id.id
         else:
             res['analytic_account_id'] = False
         return res
 
-    def prepare_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        move_obj = self.pool['stock.move']
-        for line in self.browse(cr, uid, ids, context=context):
-            move_out_data = self._prepare_out_move(cr, uid, line,
-                                                   context=context)
-            out_move_id = move_obj.create(cr, uid, move_out_data,
-                                          context=context)
-            self.write(cr, uid, [line.id], {'out_move_id': out_move_id},
-                       context=context)
+    @api.multi
+    def prepare_stock_moves(self):
+        move_obj = self.env['stock.move']
+        for line in self:
+            move_out_data = line._prepare_out_move()
+            out_move = move_obj.create(move_out_data)
+            line.write({'out_move_id': out_move.id})
 
-            move_in_data = self._prepare_in_move(cr, uid, line,
-                                                 context=context)
-            in_move_id = move_obj.create(cr, uid, move_in_data,
-                                         context=context)
-            self.write(cr, uid, [line.id], {'in_move_id': in_move_id},
-                       context=context)
+            move_in_data = line._prepare_in_move()
+            in_move = move_obj.create(move_in_data)
+            line.write({'in_move_id': in_move.id})
 
         return True
 
-    def confirm_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        move_obj = self.pool['stock.move']
-        for line in self.browse(cr, uid, ids, context=context):
+    @api.multi
+    def confirm_stock_moves(self):
+        for line in self:
             if line.in_move_id.state == 'draft':
-                move_obj.action_confirm(cr, uid, [line.in_move_id.id],
-                                        context=context)
-                move_obj.action_assign(cr, uid, [line.in_move_id.id])
+                line.in_move_id.action_confirm()
+                line.in_move_id.action_assign()
 
             if line.out_move_id.state == 'draft':
-                move_obj.action_confirm(cr, uid, [line.out_move_id.id],
-                                        context=context)
-                move_obj.action_assign(cr, uid, [line.out_move_id.id])
+                line.in_move_id.action_confirm()
+                line.in_move_id.action_assign()
         return True
 
-    def assign_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        move_obj = self.pool['stock.move']
-        for line in self.browse(cr, uid, ids, context=context):
+    @api.multi
+    def assign_stock_moves(self):
+        for line in self:
             if line.in_move_id.state not in ['draft', 'cancel', 'done']:
-                move_obj.action_assign(cr, uid, [line.in_move_id.id])
+                line.in_move_id.action_assign()
             if line.out_move_id.state not in ['draft', 'cancel', 'done']:
-                move_obj.action_assign(cr, uid, [line.out_move_id.id])
+                line.out_move_id.action_assign()
         return True
 
-    def force_assign_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        move_obj = self.pool['stock.move']
-        for line in self.browse(cr, uid, ids, context=context):
+    @api.multi
+    def force_assign_stock_moves(self):
+        for line in self:
             if line.out_move_id.state not in ['draft', 'cancel', 'done']:
-                move_obj.force_assign(cr, uid, [line.out_move_id.id],
-                                      context=context)
+                line.out_move_id.force_assign()
         return True
 
-    def cancel_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        move_obj = self.pool['stock.move']
-        for line in self.browse(cr, uid, ids, context=context):
-            move_obj.action_cancel(cr, uid, [line.in_move_id.id],
-                                   context=context)
-            move_obj.action_cancel(cr, uid, [line.out_move_id.id],
-                                   context=context)
+    @api.multi
+    def cancel_stock_moves(self):
+        for line in self:
+            line.in_move_id.action_cancel()
+            line.out_move_id.action_cancel()
         return True
 
-    def done_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        move_obj = self.pool['stock.move']
-        for line in self.browse(cr, uid, ids, context=context):
+    @api.multi
+    def done_stock_moves(self):
+        for line in self:
             if line.out_move_id.state != 'assigned':
-                raise orm.except_orm(_('Error!'),
-                                     _('All stock moves must be in status '
-                                       'Available.'))
-            move_obj.action_done(cr, uid, [line.in_move_id.id],
-                                 context=context)
-            move_obj.action_done(cr, uid, [line.out_move_id.id],
-                                 context=context)
+                raise UserError(_('All stock moves must be in'
+                                  ' status Available'))
+            line.in_move_id.action_done()
+            line.out_move_id.action_done()
         return True
 
-    def remove_stock_moves(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        self.write(cr, uid, ids,
-                   {'out_move_id': False, 'in_move_id': False},
-                   context=context)
+    @api.multi
+    def remove_stock_moves(self):
+        self.write({'out_move_id': False, 'in_move_id': False})
         return True
 
-    def copy_data(self, cr, uid, id, default=None, context=None):
-        if context is None:
-            context = {}
+    @api.one
+    def copy_data(self, default=None):
         if default is None:
             default = {}
         default['in_move_id'] = False
         default['out_move_id'] = False
-        res = super(StockAnalyticReserveLine, self).copy_data(
-            cr, uid, id, default, context)
-        return res
+        return super(StockAnalyticReserveLine, self).copy_data(default)
