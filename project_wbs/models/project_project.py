@@ -15,42 +15,41 @@ class Project(models.Model):
     _inherit = "project.project"
     _description = "WBS Element"
 
-#    @api.multi
-#    def _get_project_analytic_wbs(self):
-#        print "_get_project_analytic_wbs ####################################"
-#        result = {}
-#        cr.execute('''
-#            WITH RECURSIVE children AS (
-#            SELECT p.id as ppid, p.id as pid, a.id, a.parent_id
-#            FROM account_analytic_account a
-#            INNER JOIN project_project p
-#            ON a.id = p.analytic_account_id
-#            WHERE p.id IN %s
-#            UNION ALL
-#            SELECT b.ppid as ppid, p.id as pid, a.id, a.parent_id
-#            FROM account_analytic_account a
-#            INNER JOIN project_project p
-#            ON a.id = p.analytic_account_id
-#            JOIN children b ON(a.parent_id = b.id)
-#            WHERE p.state not in ('template', 'cancelled')
-#            )
-#            SELECT * FROM children order by ppid
-#        ''', (tuple(ids),))
-#        res = cr.fetchall()
-#        for r in res:
-#            if r[0] in result:
-#                result[r[0]][r[1]] = r[2]
-#            else:
-#                result[r[0]] = {r[1]: r[2]}
-#        return result
-#
-#    @api.multi
-#    def _get_project_wbs(self):
-#        result = []
-#        projects_data = self._get_project_analytic_wbs()
-#        for ppid in projects_data.values():
-#            result.extend(ppid.keys())
-#        return result
+    @api.multi
+    def _get_project_analytic_wbs(self):
+        result = {}
+        self._cr.execute('''
+            WITH RECURSIVE children AS (
+            SELECT p.id as ppid, p.id as pid, a.id, a.parent_id
+            FROM account_analytic_account a
+            INNER JOIN project_project p
+            ON a.id = p.analytic_account_id
+            WHERE p.id IN %s
+            UNION ALL
+            SELECT b.ppid as ppid, p.id as pid, a.id, a.parent_id
+            FROM account_analytic_account a
+            INNER JOIN project_project p
+            ON a.id = p.analytic_account_id
+            JOIN children b ON(a.parent_id = b.id)
+            WHERE p.state not in ('template', 'cancelled')
+            )
+            SELECT * FROM children order by ppid
+        ''', (tuple(self._ids),))
+        res = self._cr.fetchall()
+        for r in res:
+            if r[0] in result:
+                result[r[0]][r[1]] = r[2]
+            else:
+                result[r[0]] = {r[1]: r[2]}
+        return result
+
+    @api.multi
+    def _get_project_wbs(self):
+        result = []
+        projects_data = self._get_project_analytic_wbs()
+        for ppid in projects_data.values():
+            result.extend(ppid.keys())
+        return result
 
     @api.multi
     @api.depends('name', 'parent_id')

@@ -187,7 +187,7 @@ class StockAnalyticReserveLine(models.Model):
             return {'domain': d}
         return {'domain': {'product_uom': []}}
 
-    @api.one
+    @api.multi
     def _prepare_basic_move(self):
 
         return {
@@ -195,14 +195,15 @@ class StockAnalyticReserveLine(models.Model):
             'create_date': fields.datetime.now,
             'date': self.reserve_id.date,
             'product_id': self.product_id.id,
-            'product_qty': self.product_uom_qty,
+            'product_uom_qty': self.product_uom_qty,
             'product_uom': self.product_uom_id.id,
-            'company_id': self.company_id.id,
-            'type': 'internal'
+            'company_id': self.company_id.id
+#            'picking_type_id': 'internal'
         }
 
-    @api.one
+    @api.multi
     def _prepare_out_move(self):
+        self.ensure_one()
         res = self._prepare_basic_move()
         res['name'] = _('OUT:') + (self.reserve_id.name or '')
         res['location_id'] = self.location_id.id
@@ -214,8 +215,9 @@ class StockAnalyticReserveLine(models.Model):
             res['analytic_account_id'] = False
         return res
 
-    @api.one
+    @api.multi
     def _prepare_in_move(self):
+        self.ensure_one()
         res = self._prepare_basic_move()
         res['name'] = _('IN:') + (self.reserve_id.name or '')
         res['location_id'] = self.reserve_id.wh_analytic_reserve_location_id.id

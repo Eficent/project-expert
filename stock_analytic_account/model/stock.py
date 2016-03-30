@@ -186,8 +186,8 @@ class StockMove(models.Model):
         # force assignation of consumable products and incoming
         # from supplier/inventory/production
         if to_assign_moves:
-            to_assign_moves = self.browse(to_assign_moves)
-            to_assign_moves.force_assign(list(to_assign_moves))
+            to_assign_moves = self.browse(list(to_assign_moves))
+            to_assign_moves.force_assign()
 
     @api.multi
     def action_scrap(self, quantity, location_id, restrict_lot_id=False,
